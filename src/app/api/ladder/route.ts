@@ -3,16 +3,20 @@ import type { Division, LadderEntry, LadderDivision } from '@/types';
 import { extractAgeGroup } from '@/lib/utils';
 import { COMPETITIONS, SQUADI_BASE, SQUADI_HEADERS } from '@/lib/competitions';
 
-async function squadiGet(path: string) {
-  const res = await fetch(`${SQUADI_BASE}${path}`, {
-    headers: SQUADI_HEADERS,
-    next: { revalidate: 300 },
-  });
-  if (!res.ok) throw new Error(`Squadi ${path} → ${res.status}`);
-  return res.json();
+function makeSquadiGet(noCache: boolean) {
+  return async function squadiGet(path: string) {
+    const res = await fetch(`${SQUADI_BASE}${path}`, {
+      headers: SQUADI_HEADERS,
+      ...(noCache ? { cache: 'no-store' } : { next: { revalidate: 300 } }),
+    });
+    if (!res.ok) throw new Error(`Squadi ${path} → ${res.status}`);
+    return res.json();
+  };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const force = new URL(request.url).searchParams.get('force') === '1';
+  const squadiGet = makeSquadiGet(force);
   try {
     const [compResults, divisionResults] = await Promise.all([
       Promise.all(COMPETITIONS.map(([, id]) => squadiGet(`/competitions/id/${id}`))),

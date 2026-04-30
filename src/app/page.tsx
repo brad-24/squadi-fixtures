@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, useMemo, type ReactNode } from 'react';
+import Image from 'next/image';
 import type { FixtureData, LadderData, ActiveFilters, Match } from '@/types';
-import { formatMatchDate, formatDateKey } from '@/lib/utils';
+import { formatMatchDate, formatDateKey, formatMatchTime, getStatusLabel } from '@/lib/utils';
 import MultiSelect from '@/components/MultiSelect';
 import MatchCard from '@/components/MatchCard';
 import LadderView from '@/components/LadderView';
@@ -76,6 +77,7 @@ export default function Home() {
   const [fixtureError, setFixtureError] = useState<string | null>(null);
   const [ladderError, setLadderError] = useState<string | null>(null);
   const [filters, setFilters] = useState<ActiveFilters>(EMPTY_FILTERS);
+  const [reloading, setReloading] = useState(false);
 
   useEffect(() => {
     fetch('/api/fixtures')
@@ -87,6 +89,24 @@ export default function Home() {
       .then(setLadderData)
       .catch((e) => setLadderError(e.message));
   }, []);
+
+  async function handleReload() {
+    setReloading(true);
+    setFixtureError(null);
+    setLadderError(null);
+    try {
+      const [fRes, lRes] = await Promise.all([
+        fetch('/api/fixtures?force=1', { cache: 'no-store' }),
+        fetch('/api/ladder?force=1', { cache: 'no-store' }),
+      ]);
+      if (fRes.ok) setFixtureData(await fRes.json());
+      else setFixtureError(String(fRes.status));
+      if (lRes.ok) setLadderData(await lRes.json());
+      else setLadderError(String(lRes.status));
+    } catch { /* keep existing data visible */ } finally {
+      setReloading(false);
+    }
+  }
 
   const filterOptions = useMemo(() => {
     if (!fixtureData) return { competitions: [], ageGroups: [], clubs: [], teams: [] };
@@ -167,7 +187,6 @@ export default function Home() {
   function switchTab(newTab: Tab) {
     setTab(newTab);
     if (newTab === 'results') {
-      // Default to past 2 weeks when opening Results
       setFilters((f) => ({
         ...f,
         dateFrom: subtractDays(new Date(), 14),
@@ -188,19 +207,88 @@ export default function Home() {
     }
   }
 
+  function exportToCSV() {
+    const matches = tab === 'results'
+      ? filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED')
+      : filteredMatches.filter((m) => m.matchStatus?.toUpperCase() !== 'ENDED');
+
+    const headers = [
+      'Date', 'Time', 'Competition', 'Age Group', 'Round', 'Division',
+      'Team 1', 'Score 1', 'Score 2', 'Team 2', 'Venue', 'Status',
+    ];
+    const rows = matches.map((m) => [
+      formatDateKey(m.startTime),
+      formatMatchTime(m.startTime),
+      m.competitionName,
+      m.ageGroup,
+      m.round.name,
+      m.divisionName,
+      m.team1.name,
+      m.team1Score ?? '',
+      m.team2Score ?? '',
+      m.team2.name,
+      [m.venueCourt?.venue?.name, m.venueCourt?.name].filter(Boolean).join(' · '),
+      getStatusLabel(m.matchStatus),
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `darling-downs-${tab}-${todayStr()}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   const tabConfig = [
     { id: 'fixtures' as Tab, label: '📅 Fixtures' },
     { id: 'results' as Tab, label: '✅ Results' },
     { id: 'ladder' as Tab, label: '🏆 Ladder' },
   ];
 
+  const showExport = tab !== 'ladder' && fixtureData &&
+    (tab === 'fixtures' ? upcomingCount > 0 : completedCount > 0);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Sticky header + tabs */}
       <header className="bg-brand-800 text-white shadow-lg sticky top-0 z-40">
         <div className="max-w-3xl mx-auto px-4 pt-3 pb-0">
-          <div className="flex items-baseline gap-3 mb-2">
-            <h1 className="font-bold text-lg leading-tight">Darling Downs Football</h1>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2.5">
+              <div className="bg-white rounded px-2 py-1 flex-shrink-0">
+                <Image
+                  src="/fq-logo.png"
+                  alt="Football Queensland"
+                  width={77}
+                  height={28}
+                  className="h-7 w-auto object-contain"
+                  unoptimized
+                />
+              </div>
+              <h1 className="font-bold text-lg leading-tight">Darling Downs Football</h1>
+            </div>
+            <button
+              onClick={handleReload}
+              disabled={reloading}
+              title="Reload data"
+              type="button"
+              className="p-1.5 rounded-lg text-blue-200 hover:text-white hover:bg-brand-700 transition-colors disabled:opacity-50 flex-shrink-0"
+            >
+              <svg
+                className={`w-5 h-5 ${reloading ? 'animate-spin' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
           </div>
           <div className="flex gap-1">
             {tabConfig.map(({ id, label }) => (
@@ -353,21 +441,36 @@ export default function Home() {
             )}
             {fixtureData && (
               <>
-                <p className="text-sm text-gray-500 mb-4">
-                  {hasActiveFilters ? (
-                    <>
-                      <span className="font-semibold text-gray-800">{upcomingCount}</span>
-                      {' upcoming matches'}
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-semibold text-gray-800">{upcomingCount}</span>
-                      {' upcoming across '}
-                      <span className="font-semibold text-gray-800">{upcomingByDate.size}</span>
-                      {' dates'}
-                    </>
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm text-gray-500">
+                    {hasActiveFilters ? (
+                      <>
+                        <span className="font-semibold text-gray-800">{upcomingCount}</span>
+                        {' upcoming matches'}
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-semibold text-gray-800">{upcomingCount}</span>
+                        {' upcoming across '}
+                        <span className="font-semibold text-gray-800">{upcomingByDate.size}</span>
+                        {' dates'}
+                      </>
+                    )}
+                  </p>
+                  {showExport && (
+                    <button
+                      onClick={exportToCSV}
+                      type="button"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Export CSV
+                    </button>
                   )}
-                </p>
+                </div>
                 {upcomingByDate.size === 0 ? (
                   <div className="text-center py-16 text-gray-400">
                     <svg className="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -414,10 +517,25 @@ export default function Home() {
             )}
             {fixtureData && (
               <>
-                <p className="text-sm text-gray-500 mb-4">
-                  <span className="font-semibold text-gray-800">{completedCount}</span>
-                  {' results'}
-                </p>
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm text-gray-500">
+                    <span className="font-semibold text-gray-800">{completedCount}</span>
+                    {' results'}
+                  </p>
+                  {showExport && (
+                    <button
+                      onClick={exportToCSV}
+                      type="button"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Export CSV
+                    </button>
+                  )}
+                </div>
                 {completedByDate.size === 0 ? (
                   <div className="text-center py-16 text-gray-400">
                     <svg className="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">

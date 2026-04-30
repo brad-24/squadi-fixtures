@@ -78,6 +78,7 @@ export default function Home() {
   const [ladderError, setLadderError] = useState<string | null>(null);
   const [filters, setFilters] = useState<ActiveFilters>(EMPTY_FILTERS);
   const [reloading, setReloading] = useState(false);
+  const [showPastFixtures, setShowPastFixtures] = useState(false);
 
   useEffect(() => {
     fetch('/api/fixtures')
@@ -142,16 +143,19 @@ export default function Home() {
   }, [fixtureData, filters]);
 
   // Upcoming = not yet played (ascending date order)
+  // When showPastFixtures is false, clamp to today onwards
   const upcomingByDate = useMemo(() => {
+    const today = todayStr();
     const groups = new Map<string, Match[]>();
     for (const m of filteredMatches) {
       if (m.matchStatus?.toUpperCase() === 'ENDED') continue;
+      if (!showPastFixtures && formatDateKey(m.startTime) < today) continue;
       const key = formatDateKey(m.startTime);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(m);
     }
     return groups;
-  }, [filteredMatches]);
+  }, [filteredMatches, showPastFixtures]);
 
   // Results = completed matches (descending date order — most recent first)
   const completedByDate = useMemo(() => {
@@ -165,10 +169,14 @@ export default function Home() {
     return new Map([...groups.entries()].sort((a, b) => b[0].localeCompare(a[0])));
   }, [filteredMatches]);
 
-  const upcomingCount = useMemo(
-    () => filteredMatches.filter((m) => m.matchStatus?.toUpperCase() !== 'ENDED').length,
-    [filteredMatches],
-  );
+  const upcomingCount = useMemo(() => {
+    const today = todayStr();
+    return filteredMatches.filter((m) => {
+      if (m.matchStatus?.toUpperCase() === 'ENDED') return false;
+      if (!showPastFixtures && formatDateKey(m.startTime) < today) return false;
+      return true;
+    }).length;
+  }, [filteredMatches, showPastFixtures]);
   const completedCount = useMemo(
     () => filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED').length,
     [filteredMatches],
@@ -208,9 +216,14 @@ export default function Home() {
   }
 
   function exportToCSV() {
+    const today = todayStr();
     const matches = tab === 'results'
       ? filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED')
-      : filteredMatches.filter((m) => m.matchStatus?.toUpperCase() !== 'ENDED');
+      : filteredMatches.filter((m) => {
+          if (m.matchStatus?.toUpperCase() === 'ENDED') return false;
+          if (!showPastFixtures && formatDateKey(m.startTime) < today) return false;
+          return true;
+        });
 
     const headers = [
       'Date', 'Time', 'Competition', 'Age Group', 'Round', 'Division',
@@ -245,9 +258,14 @@ export default function Home() {
   }
 
   function exportToICS() {
+    const today = todayStr();
     const matches = tab === 'results'
       ? filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED')
-      : filteredMatches.filter((m) => m.matchStatus?.toUpperCase() !== 'ENDED');
+      : filteredMatches.filter((m) => {
+          if (m.matchStatus?.toUpperCase() === 'ENDED') return false;
+          if (!showPastFixtures && formatDateKey(m.startTime) < today) return false;
+          return true;
+        });
 
     function toICSDate(utcString: string): string {
       return new Date(utcString).toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
@@ -443,6 +461,19 @@ export default function Home() {
                     </button>
                   );
                 })}
+                {tab === 'fixtures' && (
+                  <button
+                    onClick={() => setShowPastFixtures((v) => !v)}
+                    type="button"
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors
+                      ${showPastFixtures
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                  >
+                    Show past
+                  </button>
+                )}
               </div>
               {hasActiveFilters && (
                 <button

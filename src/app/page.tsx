@@ -260,17 +260,15 @@ export default function Home() {
         <div className="max-w-3xl mx-auto px-4 pt-3 pb-0">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2.5">
-              <div className="bg-white rounded p-1 flex-shrink-0">
-                <Image
-                  src="/fq-logo.png"
-                  alt="Football Queensland"
-                  width={32}
-                  height={32}
-                  className="h-8 w-8 object-contain"
-                  unoptimized
-                />
-              </div>
-              <h1 className="font-bold text-lg leading-tight">Darling Downs Football</h1>
+              <Image
+                src="/fq-logo.png"
+                alt="Football Queensland"
+                width={32}
+                height={32}
+                className="h-8 w-8 object-contain flex-shrink-0"
+                unoptimized
+              />
+              <h1 className="font-bold text-lg leading-tight">Football Queensland – Darling Downs</h1>
             </div>
             <button
               onClick={handleReload}

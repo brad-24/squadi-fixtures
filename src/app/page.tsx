@@ -7,6 +7,7 @@ import MultiSelect from '@/components/MultiSelect';
 import MatchCard from '@/components/MatchCard';
 
 const EMPTY_FILTERS: ActiveFilters = {
+  competitions: [],
   ageGroups: [],
   clubs: [],
   teams: [],
@@ -30,9 +31,9 @@ export default function Home() {
       .catch((e) => setError(e.message));
   }, []);
 
-  // Derive filter option lists from all matches
   const filterOptions = useMemo(() => {
-    if (!data) return { ageGroups: [], clubs: [], teams: [] };
+    if (!data) return { competitions: [], ageGroups: [], clubs: [], teams: [] };
+    const competitions = [...new Set(data.allMatches.map((m) => m.competitionName))].sort();
     const ageGroups = [...new Set(data.allMatches.map((m) => m.ageGroup))].sort();
     const clubs = [
       ...new Set(
@@ -42,17 +43,16 @@ export default function Home() {
       ),
     ].sort();
     const teams = [
-      ...new Set(
-        data.allMatches.flatMap((m) => [m.team1.name, m.team2.name]),
-      ),
+      ...new Set(data.allMatches.flatMap((m) => [m.team1.name, m.team2.name])),
     ].sort();
-    return { ageGroups, clubs, teams };
+    return { competitions, ageGroups, clubs, teams };
   }, [data]);
 
-  // Apply filters
   const filteredMatches = useMemo((): Match[] => {
     if (!data) return [];
     return data.allMatches.filter((m) => {
+      if (filters.competitions.length && !filters.competitions.includes(m.competitionName))
+        return false;
       if (filters.ageGroups.length && !filters.ageGroups.includes(m.ageGroup)) return false;
       if (
         filters.clubs.length &&
@@ -67,18 +67,15 @@ export default function Home() {
       )
         return false;
       if (filters.dateFrom) {
-        const matchDate = formatDateKey(m.startTime);
-        if (matchDate < filters.dateFrom) return false;
+        if (formatDateKey(m.startTime) < filters.dateFrom) return false;
       }
       if (filters.dateTo) {
-        const matchDate = formatDateKey(m.startTime);
-        if (matchDate > filters.dateTo) return false;
+        if (formatDateKey(m.startTime) > filters.dateTo) return false;
       }
       return true;
     });
   }, [data, filters]);
 
-  // Group by date
   const matchesByDate = useMemo(() => {
     const groups = new Map<string, Match[]>();
     for (const m of filteredMatches) {
@@ -89,19 +86,16 @@ export default function Home() {
     return groups;
   }, [filteredMatches]);
 
-  const hasActiveFilters =
-    filters.ageGroups.length > 0 ||
-    filters.clubs.length > 0 ||
-    filters.teams.length > 0 ||
-    filters.dateFrom !== '' ||
-    filters.dateTo !== '';
+  const activeFilterCount = [
+    filters.competitions.length > 0,
+    filters.ageGroups.length > 0,
+    filters.clubs.length > 0,
+    filters.teams.length > 0,
+    !!filters.dateFrom,
+    !!filters.dateTo,
+  ].filter(Boolean).length;
 
-  const activeFilterCount =
-    (filters.ageGroups.length > 0 ? 1 : 0) +
-    (filters.clubs.length > 0 ? 1 : 0) +
-    (filters.teams.length > 0 ? 1 : 0) +
-    (filters.dateFrom ? 1 : 0) +
-    (filters.dateTo ? 1 : 0);
+  const hasActiveFilters = activeFilterCount > 0;
 
   function clearFilters() {
     setFilters(EMPTY_FILTERS);
@@ -112,28 +106,17 @@ export default function Home() {
       {/* Header */}
       <header className="bg-brand-800 text-white shadow-lg sticky top-0 z-40">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
-          {data?.competition?.logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={data.competition.logoUrl}
-              alt="Competition logo"
-              className="w-10 h-10 rounded-full object-cover flex-shrink-0 bg-white p-0.5"
-            />
-          )}
-          <div className="min-w-0">
-            <h1 className="font-bold text-lg leading-tight truncate">
-              {data?.competition?.name ?? 'Fixtures'}
-            </h1>
+          <div className="min-w-0 flex-1">
+            <h1 className="font-bold text-lg leading-tight">Darling Downs Football</h1>
             {data && (
               <p className="text-blue-200 text-xs">
-                {data.allMatches.length} matches · {data.divisions.length} divisions
+                {data.allMatches.length} matches · {data.competitions.length} competitions
               </p>
             )}
           </div>
-          {/* Mobile filter toggle */}
           <button
             onClick={() => setFiltersOpen(!filtersOpen)}
-            className="ml-auto flex items-center gap-1.5 bg-brand-700 hover:bg-brand-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex-shrink-0"
+            className="flex items-center gap-1.5 bg-brand-700 hover:bg-brand-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex-shrink-0"
             type="button"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -151,13 +134,15 @@ export default function Home() {
       </header>
 
       {/* Filter panel */}
-      <div
-        className={`bg-white border-b border-gray-200 shadow-sm transition-all duration-200 ${
-          filtersOpen ? 'block' : 'hidden'
-        }`}
-      >
+      <div className={`bg-white border-b border-gray-200 shadow-sm ${filtersOpen ? 'block' : 'hidden'}`}>
         <div className="max-w-3xl mx-auto px-4 py-3 space-y-3">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            <MultiSelect
+              label="Competition"
+              options={filterOptions.competitions}
+              selected={filters.competitions}
+              onChange={(v) => setFilters((f) => ({ ...f, competitions: v }))}
+            />
             <MultiSelect
               label="Age Group"
               options={filterOptions.ageGroups}
@@ -227,7 +212,6 @@ export default function Home() {
 
         {data && (
           <>
-            {/* Results summary */}
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm text-gray-500">
                 {hasActiveFilters ? (
@@ -264,11 +248,7 @@ export default function Home() {
                     d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <p className="text-sm">No matches match your filters</p>
-                <button
-                  onClick={clearFilters}
-                  className="mt-2 text-blue-600 text-sm hover:text-blue-800"
-                  type="button"
-                >
+                <button onClick={clearFilters} className="mt-2 text-blue-600 text-sm hover:text-blue-800" type="button">
                   Clear filters
                 </button>
               </div>

@@ -65,6 +65,8 @@ export default function MatchCard({ match }: Props) {
       {/* Header row */}
       <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-100">
         <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-xs text-gray-500 truncate">{match.competitionName}</span>
+          <span className="text-gray-300">·</span>
           <span className="text-xs text-gray-500 truncate">{match.round.name}</span>
           <span className="text-gray-300">·</span>
           <span className="text-xs text-gray-500 truncate">{match.divisionName}</span>

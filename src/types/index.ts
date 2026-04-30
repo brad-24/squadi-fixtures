@@ -61,18 +61,20 @@ export interface Match {
   finalsAlias: string | null;
   // enriched
   divisionName: string;
+  competitionName: string;
   ageGroup: string;
   club1: string;
   club2: string;
 }
 
 export interface FixtureData {
-  competition: Competition;
+  competitions: Competition[];
   divisions: Division[];
   allMatches: Match[];
 }
 
 export interface ActiveFilters {
+  competitions: string[];
   ageGroups: string[];
   clubs: string[];
   teams: string[];

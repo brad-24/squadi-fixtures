@@ -244,6 +244,60 @@ export default function Home() {
     URL.revokeObjectURL(url);
   }
 
+  function exportToICS() {
+    const matches = tab === 'results'
+      ? filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED')
+      : filteredMatches.filter((m) => m.matchStatus?.toUpperCase() !== 'ENDED');
+
+    function toICSDate(utcString: string): string {
+      return new Date(utcString).toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+    }
+
+    function icsEscape(str: string): string {
+      return str.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+    }
+
+    const events = matches.map((m) => {
+      const dtStart = toICSDate(m.startTime);
+      const dtEnd = toICSDate(new Date(new Date(m.startTime).getTime() + 90 * 60 * 1000).toISOString());
+      const summary = `${m.team1.name} v ${m.team2.name}`;
+      const descParts = [m.competitionName, m.round.name, m.divisionName];
+      if (m.team1Score !== null && m.team2Score !== null) {
+        descParts.push(`${m.team1Score} - ${m.team2Score}`);
+      }
+      const location = [m.venueCourt?.venue?.name, m.venueCourt?.name].filter(Boolean).join(', ');
+      const lines = [
+        'BEGIN:VEVENT',
+        `UID:match-${m.id}@darling-downs-fq`,
+        `DTSTART:${dtStart}`,
+        `DTEND:${dtEnd}`,
+        `SUMMARY:${icsEscape(summary)}`,
+        `DESCRIPTION:${icsEscape(descParts.join(' · '))}`,
+      ];
+      if (location) lines.push(`LOCATION:${icsEscape(location)}`);
+      lines.push('END:VEVENT');
+      return lines.join('\r\n');
+    });
+
+    const calendar = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Football Queensland Darling Downs//Fixtures//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      ...events,
+      'END:VCALENDAR',
+    ].join('\r\n');
+
+    const blob = new Blob([calendar], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `darling-downs-${tab}-${todayStr()}.ics`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   const tabConfig = [
     { id: 'fixtures' as Tab, label: '📅 Fixtures' },
     { id: 'results' as Tab, label: '✅ Results' },
@@ -456,17 +510,30 @@ export default function Home() {
                     )}
                   </p>
                   {showExport && (
-                    <button
-                      onClick={exportToCSV}
-                      type="button"
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-colors"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Export CSV
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={exportToCSV}
+                        type="button"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        CSV
+                      </button>
+                      <button
+                        onClick={exportToICS}
+                        type="button"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Calendar
+                      </button>
+                    </div>
                   )}
                 </div>
                 {upcomingByDate.size === 0 ? (
@@ -521,17 +588,30 @@ export default function Home() {
                     {' results'}
                   </p>
                   {showExport && (
-                    <button
-                      onClick={exportToCSV}
-                      type="button"
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-colors"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Export CSV
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={exportToCSV}
+                        type="button"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        CSV
+                      </button>
+                      <button
+                        onClick={exportToICS}
+                        type="button"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Calendar
+                      </button>
+                    </div>
                   )}
                 </div>
                 {completedByDate.size === 0 ? (

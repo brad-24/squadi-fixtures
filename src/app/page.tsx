@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import type { FixtureData, ActiveFilters, Match } from '@/types';
+import { useEffect, useState, useMemo, type ReactNode } from 'react';
+import type { FixtureData, LadderData, ActiveFilters, Match } from '@/types';
 import { formatMatchDate, formatDateKey } from '@/lib/utils';
 import MultiSelect from '@/components/MultiSelect';
 import MatchCard from '@/components/MatchCard';
+import LadderView from '@/components/LadderView';
+
+type Tab = 'fixtures' | 'ladder';
 
 const EMPTY_FILTERS: ActiveFilters = {
   competitions: [],
@@ -15,66 +18,90 @@ const EMPTY_FILTERS: ActiveFilters = {
   dateTo: '',
 };
 
+const DATE_PRESETS = [
+  { label: '1 Week', days: 7 },
+  { label: '2 Weeks', days: 14 },
+  { label: '1 Month', days: 30 },
+  { label: '2 Months', days: 60 },
+  { label: '3 Months', days: 90 },
+];
+
+function FilterCell({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-xs font-medium text-gray-500 mb-1">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+function addDays(date: Date, days: number): string {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d.toLocaleDateString('en-CA'); // YYYY-MM-DD
+}
+
+function todayStr(): string {
+  return new Date().toLocaleDateString('en-CA');
+}
+
+function isPresetActive(filters: ActiveFilters, days: number): boolean {
+  const from = todayStr();
+  const to = addDays(new Date(), days);
+  return filters.dateFrom === from && filters.dateTo === to;
+}
+
 export default function Home() {
-  const [data, setData] = useState<FixtureData | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>('fixtures');
+  const [fixtureData, setFixtureData] = useState<FixtureData | null>(null);
+  const [ladderData, setLadderData] = useState<LadderData | null>(null);
+  const [fixtureError, setFixtureError] = useState<string | null>(null);
+  const [ladderError, setLadderError] = useState<string | null>(null);
   const [filters, setFilters] = useState<ActiveFilters>(EMPTY_FILTERS);
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     fetch('/api/fixtures')
-      .then((r) => {
-        if (!r.ok) throw new Error(`Failed to load: ${r.status}`);
-        return r.json();
-      })
-      .then((d: FixtureData) => setData(d))
-      .catch((e) => setError(e.message));
+      .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
+      .then(setFixtureData)
+      .catch((e) => setFixtureError(e.message));
+    fetch('/api/ladder')
+      .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
+      .then(setLadderData)
+      .catch((e) => setLadderError(e.message));
   }, []);
 
   const filterOptions = useMemo(() => {
-    if (!data) return { competitions: [], ageGroups: [], clubs: [], teams: [] };
-    const competitions = [...new Set(data.allMatches.map((m) => m.competitionName))].sort();
-    const ageGroups = [...new Set(data.allMatches.map((m) => m.ageGroup))].sort();
+    if (!fixtureData) return { competitions: [], ageGroups: [], clubs: [], teams: [] };
+    const competitions = [...new Set(fixtureData.allMatches.map((m) => m.competitionName))].sort();
+    const ageGroups = [...new Set(fixtureData.allMatches.map((m) => m.ageGroup))].sort();
     const clubs = [
       ...new Set(
-        data.allMatches
+        fixtureData.allMatches
           .flatMap((m) => [m.club1, m.club2])
           .filter((c) => c && c.toLowerCase() !== 'bye'),
       ),
     ].sort();
     const teams = [
-      ...new Set(data.allMatches.flatMap((m) => [m.team1.name, m.team2.name])),
+      ...new Set(fixtureData.allMatches.flatMap((m) => [m.team1.name, m.team2.name])),
     ].sort();
     return { competitions, ageGroups, clubs, teams };
-  }, [data]);
+  }, [fixtureData]);
 
   const filteredMatches = useMemo((): Match[] => {
-    if (!data) return [];
-    return data.allMatches.filter((m) => {
+    if (!fixtureData) return [];
+    return fixtureData.allMatches.filter((m) => {
       if (filters.competitions.length && !filters.competitions.includes(m.competitionName))
         return false;
       if (filters.ageGroups.length && !filters.ageGroups.includes(m.ageGroup)) return false;
-      if (
-        filters.clubs.length &&
-        !filters.clubs.includes(m.club1) &&
-        !filters.clubs.includes(m.club2)
-      )
+      if (filters.clubs.length && !filters.clubs.includes(m.club1) && !filters.clubs.includes(m.club2))
         return false;
-      if (
-        filters.teams.length &&
-        !filters.teams.includes(m.team1.name) &&
-        !filters.teams.includes(m.team2.name)
-      )
+      if (filters.teams.length && !filters.teams.includes(m.team1.name) && !filters.teams.includes(m.team2.name))
         return false;
-      if (filters.dateFrom) {
-        if (formatDateKey(m.startTime) < filters.dateFrom) return false;
-      }
-      if (filters.dateTo) {
-        if (formatDateKey(m.startTime) > filters.dateTo) return false;
-      }
+      if (filters.dateFrom && formatDateKey(m.startTime) < filters.dateFrom) return false;
+      if (filters.dateTo && formatDateKey(m.startTime) > filters.dateTo) return false;
       return true;
     });
-  }, [data, filters]);
+  }, [fixtureData, filters]);
 
   const matchesByDate = useMemo(() => {
     const groups = new Map<string, Match[]>();
@@ -86,110 +113,167 @@ export default function Home() {
     return groups;
   }, [filteredMatches]);
 
-  const activeFilterCount = [
-    filters.competitions.length > 0,
-    filters.ageGroups.length > 0,
-    filters.clubs.length > 0,
-    filters.teams.length > 0,
-    !!filters.dateFrom,
-    !!filters.dateTo,
-  ].filter(Boolean).length;
+  const hasActiveFilters =
+    filters.competitions.length > 0 ||
+    filters.ageGroups.length > 0 ||
+    filters.clubs.length > 0 ||
+    filters.teams.length > 0 ||
+    !!filters.dateFrom ||
+    !!filters.dateTo;
 
-  const hasActiveFilters = activeFilterCount > 0;
+  function clearFilters() { setFilters(EMPTY_FILTERS); }
 
-  function clearFilters() {
-    setFilters(EMPTY_FILTERS);
+  function applyPreset(days: number) {
+    const from = todayStr();
+    const to = addDays(new Date(), days);
+    if (isPresetActive(filters, days)) {
+      setFilters((f) => ({ ...f, dateFrom: '', dateTo: '' }));
+    } else {
+      setFilters((f) => ({ ...f, dateFrom: from, dateTo: to }));
+    }
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Sticky header + tabs */}
       <header className="bg-brand-800 text-white shadow-lg sticky top-0 z-40">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
-          <div className="min-w-0 flex-1">
+        <div className="max-w-3xl mx-auto px-4 pt-3 pb-0">
+          <div className="flex items-baseline gap-3 mb-2">
             <h1 className="font-bold text-lg leading-tight">Darling Downs Football</h1>
-            {data && (
-              <p className="text-blue-200 text-xs">
-                {data.allMatches.length} matches · {data.competitions.length} competitions
-              </p>
-            )}
-          </div>
-          <button
-            onClick={() => setFiltersOpen(!filtersOpen)}
-            className="flex items-center gap-1.5 bg-brand-700 hover:bg-brand-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex-shrink-0"
-            type="button"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
-            </svg>
-            Filters
-            {activeFilterCount > 0 && (
-              <span className="bg-white text-brand-800 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
-                {activeFilterCount}
+            {fixtureData && (
+              <span className="text-blue-200 text-xs hidden sm:inline">
+                {fixtureData.allMatches.length} matches · {fixtureData.competitions.length} competitions
               </span>
             )}
-          </button>
+          </div>
+          {/* Tabs */}
+          <div className="flex gap-1">
+            {(['fixtures', 'ladder'] as Tab[]).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-4 py-2 text-sm font-semibold capitalize rounded-t-lg transition-colors
+                  ${tab === t
+                    ? 'bg-gray-50 text-brand-800'
+                    : 'text-blue-200 hover:text-white hover:bg-brand-700'
+                  }`}
+                type="button"
+              >
+                {t === 'fixtures' ? '📅 Fixtures' : '🏆 Ladder'}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
-      {/* Filter panel */}
-      <div className={`bg-white border-b border-gray-200 shadow-sm ${filtersOpen ? 'block' : 'hidden'}`}>
+      {/* Always-visible filter bar */}
+      <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-3 space-y-3">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            <MultiSelect
-              label="Competition"
-              options={filterOptions.competitions}
-              selected={filters.competitions}
-              onChange={(v) => setFilters((f) => ({ ...f, competitions: v }))}
-            />
-            <MultiSelect
-              label="Age Group"
-              options={filterOptions.ageGroups}
-              selected={filters.ageGroups}
-              onChange={(v) => setFilters((f) => ({ ...f, ageGroups: v }))}
-            />
-            <MultiSelect
-              label="Club"
-              options={filterOptions.clubs}
-              selected={filters.clubs}
-              onChange={(v) => setFilters((f) => ({ ...f, clubs: v }))}
-            />
-            <MultiSelect
-              label="Team"
-              options={filterOptions.teams}
-              selected={filters.teams}
-              onChange={(v) => setFilters((f) => ({ ...f, teams: v }))}
-            />
-            <div>
-              <label className="block text-xs text-gray-500 mb-1 font-medium">From</label>
-              <input
-                type="date"
-                value={filters.dateFrom}
-                onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
-                className="w-full px-2.5 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white focus:outline-none focus:border-blue-500"
+          {/* Filter grid — all items same height via shared wrapper */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6 items-end">
+            <FilterCell label="Competition">
+              <MultiSelect
+                label="Competition"
+                options={filterOptions.competitions}
+                selected={filters.competitions}
+                onChange={(v) => setFilters((f) => ({ ...f, competitions: v }))}
               />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1 font-medium">To</label>
-              <input
-                type="date"
-                value={filters.dateTo}
-                onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
-                className="w-full px-2.5 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white focus:outline-none focus:border-blue-500"
+            </FilterCell>
+            <FilterCell label="Age Group">
+              <MultiSelect
+                label="Age Group"
+                options={filterOptions.ageGroups}
+                selected={filters.ageGroups}
+                onChange={(v) => setFilters((f) => ({ ...f, ageGroups: v }))}
               />
-            </div>
+            </FilterCell>
+            {tab === 'fixtures' && (
+              <>
+                <FilterCell label="Club">
+                  <MultiSelect
+                    label="Club"
+                    options={filterOptions.clubs}
+                    selected={filters.clubs}
+                    onChange={(v) => setFilters((f) => ({ ...f, clubs: v }))}
+                  />
+                </FilterCell>
+                <FilterCell label="Team">
+                  <MultiSelect
+                    label="Team"
+                    options={filterOptions.teams}
+                    selected={filters.teams}
+                    onChange={(v) => setFilters((f) => ({ ...f, teams: v }))}
+                  />
+                </FilterCell>
+                <FilterCell label="From">
+                  <input
+                    type="date"
+                    value={filters.dateFrom}
+                    onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
+                    className="w-full px-2.5 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white focus:outline-none focus:border-blue-500 h-[38px]"
+                  />
+                </FilterCell>
+                <FilterCell label="To">
+                  <input
+                    type="date"
+                    value={filters.dateTo}
+                    onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
+                    className="w-full px-2.5 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white focus:outline-none focus:border-blue-500 h-[38px]"
+                  />
+                </FilterCell>
+              </>
+            )}
           </div>
-          {hasActiveFilters && (
+
+          {/* Date presets (fixtures only) + clear */}
+          {tab === 'fixtures' && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-gray-400 font-medium">Upcoming:</span>
+              <div className="flex gap-1.5 flex-wrap">
+                {DATE_PRESETS.map(({ label, days }) => {
+                  const active = isPresetActive(filters, days);
+                  return (
+                    <button
+                      key={days}
+                      onClick={() => applyPreset(days)}
+                      type="button"
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors
+                        ${active
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  type="button"
+                  className="ml-auto flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Clear for ladder tab */}
+          {tab === 'ladder' && hasActiveFilters && (
             <button
               onClick={clearFilters}
-              className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
               type="button"
+              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
             >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-              Clear all filters
+              Clear filters
             </button>
           )}
         </div>
@@ -197,76 +281,89 @@ export default function Home() {
 
       {/* Main content */}
       <main className="max-w-3xl mx-auto px-4 py-4">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-4 text-sm">
-            <strong>Error loading fixtures:</strong> {error}
-          </div>
-        )}
-
-        {!data && !error && (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            <p className="text-gray-500 text-sm">Loading fixtures…</p>
-          </div>
-        )}
-
-        {data && (
+        {/* ── FIXTURES TAB ── */}
+        {tab === 'fixtures' && (
           <>
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-gray-500">
-                {hasActiveFilters ? (
-                  <>
-                    <span className="font-semibold text-gray-800">{filteredMatches.length}</span>
-                    {' of '}
-                    <span>{data.allMatches.length}</span>
-                    {' matches'}
-                  </>
+            {fixtureError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-4 text-sm">
+                Error loading fixtures: {fixtureError}
+              </div>
+            )}
+            {!fixtureData && !fixtureError && (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <p className="text-gray-500 text-sm">Loading fixtures…</p>
+              </div>
+            )}
+            {fixtureData && (
+              <>
+                <p className="text-sm text-gray-500 mb-4">
+                  {hasActiveFilters ? (
+                    <>
+                      <span className="font-semibold text-gray-800">{filteredMatches.length}</span>
+                      {' of '}
+                      <span>{fixtureData.allMatches.length}</span>
+                      {' matches'}
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-semibold text-gray-800">{fixtureData.allMatches.length}</span>
+                      {' matches across '}
+                      <span className="font-semibold text-gray-800">{matchesByDate.size}</span>
+                      {' dates'}
+                    </>
+                  )}
+                </p>
+                {filteredMatches.length === 0 ? (
+                  <div className="text-center py-16 text-gray-400">
+                    <svg className="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                        d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-sm">No matches match your filters</p>
+                    <button onClick={clearFilters} className="mt-2 text-blue-600 text-sm hover:text-blue-800" type="button">
+                      Clear filters
+                    </button>
+                  </div>
                 ) : (
-                  <>
-                    <span className="font-semibold text-gray-800">{data.allMatches.length}</span>
-                    {' matches across '}
-                    <span className="font-semibold text-gray-800">{matchesByDate.size}</span>
-                    {' dates'}
-                  </>
+                  <div className="space-y-6">
+                    {[...matchesByDate.entries()].map(([dateKey, matches]) => (
+                      <section key={dateKey}>
+                        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2 px-1">
+                          {formatMatchDate(matches[0].startTime)}
+                        </h2>
+                        <div className="space-y-2.5">
+                          {matches.map((m) => <MatchCard key={m.id} match={m} />)}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
                 )}
-              </p>
-              {!filtersOpen && (
-                <button
-                  onClick={() => setFiltersOpen(true)}
-                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                  type="button"
-                >
-                  + Filter
-                </button>
-              )}
-            </div>
+              </>
+            )}
+          </>
+        )}
 
-            {filteredMatches.length === 0 ? (
-              <div className="text-center py-16 text-gray-400">
-                <svg className="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                    d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p className="text-sm">No matches match your filters</p>
-                <button onClick={clearFilters} className="mt-2 text-blue-600 text-sm hover:text-blue-800" type="button">
-                  Clear filters
-                </button>
+        {/* ── LADDER TAB ── */}
+        {tab === 'ladder' && (
+          <>
+            {ladderError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-4 text-sm">
+                Error loading ladder: {ladderError}
               </div>
-            ) : (
-              <div className="space-y-6">
-                {[...matchesByDate.entries()].map(([dateKey, matches]) => (
-                  <section key={dateKey}>
-                    <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2 px-1">
-                      {formatMatchDate(matches[0].startTime)}
-                    </h2>
-                    <div className="space-y-2.5">
-                      {matches.map((m) => (
-                        <MatchCard key={m.id} match={m} />
-                      ))}
-                    </div>
-                  </section>
-                ))}
+            )}
+            {!ladderData && !ladderError && (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <p className="text-gray-500 text-sm">Loading ladder…</p>
               </div>
+            )}
+            {ladderData && (
+              <LadderView
+                data={ladderData}
+                selectedCompetitions={filters.competitions}
+                selectedAgeGroups={filters.ageGroups}
+              />
             )}
           </>
         )}

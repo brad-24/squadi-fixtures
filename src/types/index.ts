@@ -73,6 +73,39 @@ export interface FixtureData {
   allMatches: Match[];
 }
 
+// ── Ladder ──────────────────────────────────────────────────────────────────
+
+export interface LadderEntry {
+  id: number;
+  name: string;
+  alias: string | null;
+  logoUrl: string | null;
+  rk: string;
+  P: string;
+  W: string;
+  D: string;
+  L: string;
+  F: string;
+  A: string;
+  PTS: string;
+  goalDifference: string;
+}
+
+export interface LadderDivision {
+  divisionId: number;
+  divisionName: string;
+  competitionId: number;
+  competitionName: string;
+  ageGroup: string;
+  entries: LadderEntry[];
+}
+
+export interface LadderData {
+  laddersByDivision: LadderDivision[];
+}
+
+// ── Filters ─────────────────────────────────────────────────────────────────
+
 export interface ActiveFilters {
   competitions: string[];
   ageGroups: string[];

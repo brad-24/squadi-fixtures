@@ -84,6 +84,8 @@ function LadderTable({ division }: { division: LadderDivision }) {
 
 export default function LadderView({ data, selectedCompetitions, selectedAgeGroups }: Props) {
   const filtered = data.laddersByDivision.filter((d) => {
+    // MiniRoos & U12 competitions don't record results — always exclude from ladder
+    if (/miniroos/i.test(d.competitionName)) return false;
     if (selectedCompetitions.length && !selectedCompetitions.includes(d.competitionName))
       return false;
     if (selectedAgeGroups.length && !selectedAgeGroups.includes(d.ageGroup)) return false;

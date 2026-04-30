@@ -36,24 +36,28 @@ export async function GET() {
 
     const roundResults = await Promise.all(matchFetches);
 
-    const allMatches: Match[] = [];
+    const rawMatches: Match[] = [];
     for (const { data, div, compId } of roundResults) {
-      const ageGroup = extractAgeGroup(div.name);
       const competitionName = compNameMap.get(compId) ?? '';
       for (const round of data.rounds ?? []) {
         for (const match of round.matches ?? []) {
-          allMatches.push({
+          const divisionName = divisionMap.get(match.divisionId)?.name ?? div.name;
+          rawMatches.push({
             ...match,
             round: { id: round.id, name: round.name, sequence: round.sequence },
-            divisionName: divisionMap.get(match.divisionId)?.name ?? div.name,
+            divisionName,
             competitionName,
-            ageGroup,
+            ageGroup: extractAgeGroup(divisionName),
             club1: extractClub(match.team1?.name ?? ''),
             club2: extractClub(match.team2?.name ?? ''),
           });
         }
       }
     }
+
+    // Deduplicate by match ID (API may return same match from multiple division queries)
+    const seen = new Set<number>();
+    const allMatches = rawMatches.filter((m) => !seen.has(m.id) && !!seen.add(m.id));
 
     allMatches.sort(
       (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),

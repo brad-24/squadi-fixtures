@@ -62,18 +62,23 @@ export default function MatchCard({ match }: Props) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-      {/* Header row */}
-      <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-100">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-xs text-gray-500 truncate">{match.competitionName}</span>
-          <span className="text-gray-300">·</span>
-          <span className="text-xs text-gray-500 truncate">{match.round.name}</span>
-          <span className="text-gray-300">·</span>
-          <span className="text-xs text-gray-500 truncate">{match.divisionName}</span>
+      {/* Header */}
+      <div className="px-3 pt-2.5 pb-2 bg-gray-50 border-b border-gray-100">
+        <div className="flex items-center justify-between">
+          <span className="text-base font-bold text-gray-900">
+            {formatMatchTime(match.startTime)}
+          </span>
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${statusClasses}`}>
+            {isLive ? '● Live' : statusLabel}
+          </span>
         </div>
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${statusClasses}`}>
-          {isLive ? '● Live' : statusLabel}
-        </span>
+        <div className="flex items-center gap-1 mt-0.5 min-w-0">
+          <span className="text-xs text-gray-400 truncate">{match.competitionName}</span>
+          <span className="text-gray-300 flex-shrink-0">·</span>
+          <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">{match.round.name}</span>
+          <span className="text-gray-300 flex-shrink-0">·</span>
+          <span className="text-xs text-gray-400 truncate">{match.divisionName}</span>
+        </div>
       </div>
 
       {/* Teams */}
@@ -92,10 +97,10 @@ export default function MatchCard({ match }: Props) {
         />
       </div>
 
-      {/* Footer */}
-      <div className="px-3 pb-2.5 flex items-center gap-3 text-xs text-gray-400">
-        {venue && (
-          <span className="flex items-center gap-1 truncate">
+      {/* Footer — venue only */}
+      {venue && (
+        <div className="px-3 py-2 border-t border-gray-100">
+          <span className="flex items-center gap-1 text-xs text-gray-400">
             <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -103,15 +108,8 @@ export default function MatchCard({ match }: Props) {
             </svg>
             <span className="truncate">{venue.name}{court ? ` · ${court}` : ''}</span>
           </span>
-        )}
-        <span className="flex items-center gap-1 flex-shrink-0 ml-auto">
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          {formatMatchTime(match.startTime)}
-        </span>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

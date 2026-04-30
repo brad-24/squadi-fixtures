@@ -7,7 +7,7 @@ import MultiSelect from '@/components/MultiSelect';
 import MatchCard from '@/components/MatchCard';
 import LadderView from '@/components/LadderView';
 
-type Tab = 'fixtures' | 'ladder';
+type Tab = 'fixtures' | 'results' | 'ladder';
 
 const EMPTY_FILTERS: ActiveFilters = {
   competitions: [],
@@ -38,17 +38,35 @@ function FilterCell({ label, children }: { label: string; children: ReactNode })
 function addDays(date: Date, days: number): string {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
-  return d.toLocaleDateString('en-CA'); // YYYY-MM-DD
+  return d.toLocaleDateString('en-CA');
+}
+
+function subtractDays(date: Date, days: number): string {
+  const d = new Date(date);
+  d.setDate(d.getDate() - days);
+  return d.toLocaleDateString('en-CA');
 }
 
 function todayStr(): string {
   return new Date().toLocaleDateString('en-CA');
 }
 
-function isPresetActive(filters: ActiveFilters, days: number): boolean {
-  const from = todayStr();
-  const to = addDays(new Date(), days);
+function isPresetActive(filters: ActiveFilters, days: number, direction: 'future' | 'past'): boolean {
+  const from = direction === 'future' ? todayStr() : subtractDays(new Date(), days);
+  const to = direction === 'future' ? addDays(new Date(), days) : todayStr();
   return filters.dateFrom === from && filters.dateTo === to;
+}
+
+function DateDivider({ startTime }: { startTime: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-3">
+      <div className="flex-1 h-px bg-gray-300" />
+      <span className="text-base font-bold text-gray-800 whitespace-nowrap px-2">
+        {formatMatchDate(startTime)}
+      </span>
+      <div className="flex-1 h-px bg-gray-300" />
+    </div>
+  );
 }
 
 export default function Home() {
@@ -103,15 +121,38 @@ export default function Home() {
     });
   }, [fixtureData, filters]);
 
-  const matchesByDate = useMemo(() => {
+  // Upcoming = not yet played (ascending date order)
+  const upcomingByDate = useMemo(() => {
     const groups = new Map<string, Match[]>();
     for (const m of filteredMatches) {
+      if (m.matchStatus?.toUpperCase() === 'ENDED') continue;
       const key = formatDateKey(m.startTime);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(m);
     }
     return groups;
   }, [filteredMatches]);
+
+  // Results = completed matches (descending date order — most recent first)
+  const completedByDate = useMemo(() => {
+    const groups = new Map<string, Match[]>();
+    for (const m of filteredMatches) {
+      if (m.matchStatus?.toUpperCase() !== 'ENDED') continue;
+      const key = formatDateKey(m.startTime);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(m);
+    }
+    return new Map([...groups.entries()].sort((a, b) => b[0].localeCompare(a[0])));
+  }, [filteredMatches]);
+
+  const upcomingCount = useMemo(
+    () => filteredMatches.filter((m) => m.matchStatus?.toUpperCase() !== 'ENDED').length,
+    [filteredMatches],
+  );
+  const completedCount = useMemo(
+    () => filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED').length,
+    [filteredMatches],
+  );
 
   const hasActiveFilters =
     filters.competitions.length > 0 ||
@@ -123,15 +164,35 @@ export default function Home() {
 
   function clearFilters() { setFilters(EMPTY_FILTERS); }
 
-  function applyPreset(days: number) {
-    const from = todayStr();
-    const to = addDays(new Date(), days);
-    if (isPresetActive(filters, days)) {
+  function switchTab(newTab: Tab) {
+    setTab(newTab);
+    if (newTab === 'results') {
+      // Default to past 2 weeks when opening Results
+      setFilters((f) => ({
+        ...f,
+        dateFrom: subtractDays(new Date(), 14),
+        dateTo: todayStr(),
+      }));
+    } else {
+      setFilters((f) => ({ ...f, dateFrom: '', dateTo: '' }));
+    }
+  }
+
+  function applyPreset(days: number, direction: 'future' | 'past') {
+    const from = direction === 'future' ? todayStr() : subtractDays(new Date(), days);
+    const to = direction === 'future' ? addDays(new Date(), days) : todayStr();
+    if (isPresetActive(filters, days, direction)) {
       setFilters((f) => ({ ...f, dateFrom: '', dateTo: '' }));
     } else {
       setFilters((f) => ({ ...f, dateFrom: from, dateTo: to }));
     }
   }
+
+  const tabConfig = [
+    { id: 'fixtures' as Tab, label: '📅 Fixtures' },
+    { id: 'results' as Tab, label: '✅ Results' },
+    { id: 'ladder' as Tab, label: '🏆 Ladder' },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -140,26 +201,20 @@ export default function Home() {
         <div className="max-w-3xl mx-auto px-4 pt-3 pb-0">
           <div className="flex items-baseline gap-3 mb-2">
             <h1 className="font-bold text-lg leading-tight">Darling Downs Football</h1>
-            {fixtureData && (
-              <span className="text-blue-200 text-xs hidden sm:inline">
-                {fixtureData.allMatches.length} matches · {fixtureData.competitions.length} competitions
-              </span>
-            )}
           </div>
-          {/* Tabs */}
           <div className="flex gap-1">
-            {(['fixtures', 'ladder'] as Tab[]).map((t) => (
+            {tabConfig.map(({ id, label }) => (
               <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`px-4 py-2 text-sm font-semibold capitalize rounded-t-lg transition-colors
-                  ${tab === t
+                key={id}
+                onClick={() => switchTab(id)}
+                className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors
+                  ${tab === id
                     ? 'bg-gray-50 text-brand-800'
                     : 'text-blue-200 hover:text-white hover:bg-brand-700'
                   }`}
                 type="button"
               >
-                {t === 'fixtures' ? '📅 Fixtures' : '🏆 Ladder'}
+                {label}
               </button>
             ))}
           </div>
@@ -169,7 +224,6 @@ export default function Home() {
       {/* Always-visible filter bar */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-3 space-y-3">
-          {/* Filter grid — all items same height via shared wrapper */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6 items-end">
             <FilterCell label="Competition">
               <MultiSelect
@@ -187,7 +241,7 @@ export default function Home() {
                 onChange={(v) => setFilters((f) => ({ ...f, ageGroups: v }))}
               />
             </FilterCell>
-            {tab === 'fixtures' && (
+            {tab !== 'ladder' && (
               <>
                 <FilterCell label="Club">
                   <MultiSelect
@@ -225,17 +279,19 @@ export default function Home() {
             )}
           </div>
 
-          {/* Date presets (fixtures only) + clear */}
-          {tab === 'fixtures' && (
+          {tab !== 'ladder' && (
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-gray-400 font-medium">Upcoming:</span>
+              <span className="text-xs text-gray-400 font-medium">
+                {tab === 'fixtures' ? 'Upcoming:' : 'Past:'}
+              </span>
               <div className="flex gap-1.5 flex-wrap">
                 {DATE_PRESETS.map(({ label, days }) => {
-                  const active = isPresetActive(filters, days);
+                  const direction = tab === 'fixtures' ? 'future' : 'past';
+                  const active = isPresetActive(filters, days, direction);
                   return (
                     <button
                       key={days}
-                      onClick={() => applyPreset(days)}
+                      onClick={() => applyPreset(days, direction)}
                       type="button"
                       className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors
                         ${active
@@ -263,7 +319,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* Clear for ladder tab */}
           {tab === 'ladder' && hasActiveFilters && (
             <button
               onClick={clearFilters}
@@ -281,6 +336,7 @@ export default function Home() {
 
       {/* Main content */}
       <main className="max-w-3xl mx-auto px-4 py-4">
+
         {/* ── FIXTURES TAB ── */}
         {tab === 'fixtures' && (
           <>
@@ -300,38 +356,86 @@ export default function Home() {
                 <p className="text-sm text-gray-500 mb-4">
                   {hasActiveFilters ? (
                     <>
-                      <span className="font-semibold text-gray-800">{filteredMatches.length}</span>
-                      {' of '}
-                      <span>{fixtureData.allMatches.length}</span>
-                      {' matches'}
+                      <span className="font-semibold text-gray-800">{upcomingCount}</span>
+                      {' upcoming matches'}
                     </>
                   ) : (
                     <>
-                      <span className="font-semibold text-gray-800">{fixtureData.allMatches.length}</span>
-                      {' matches across '}
-                      <span className="font-semibold text-gray-800">{matchesByDate.size}</span>
+                      <span className="font-semibold text-gray-800">{upcomingCount}</span>
+                      {' upcoming across '}
+                      <span className="font-semibold text-gray-800">{upcomingByDate.size}</span>
                       {' dates'}
                     </>
                   )}
                 </p>
-                {filteredMatches.length === 0 ? (
+                {upcomingByDate.size === 0 ? (
                   <div className="text-center py-16 text-gray-400">
                     <svg className="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                         d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <p className="text-sm">No matches match your filters</p>
-                    <button onClick={clearFilters} className="mt-2 text-blue-600 text-sm hover:text-blue-800" type="button">
-                      Clear filters
-                    </button>
+                    <p className="text-sm">No upcoming matches</p>
+                    {hasActiveFilters && (
+                      <button onClick={clearFilters} className="mt-2 text-blue-600 text-sm hover:text-blue-800" type="button">
+                        Clear filters
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {[...matchesByDate.entries()].map(([dateKey, matches]) => (
+                    {[...upcomingByDate.entries()].map(([dateKey, matches]) => (
                       <section key={dateKey}>
-                        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2 px-1">
-                          {formatMatchDate(matches[0].startTime)}
-                        </h2>
+                        <DateDivider startTime={matches[0].startTime} />
+                        <div className="space-y-2.5">
+                          {matches.map((m) => <MatchCard key={m.id} match={m} />)}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {/* ── RESULTS TAB ── */}
+        {tab === 'results' && (
+          <>
+            {fixtureError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-4 text-sm">
+                Error loading results: {fixtureError}
+              </div>
+            )}
+            {!fixtureData && !fixtureError && (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <p className="text-gray-500 text-sm">Loading results…</p>
+              </div>
+            )}
+            {fixtureData && (
+              <>
+                <p className="text-sm text-gray-500 mb-4">
+                  <span className="font-semibold text-gray-800">{completedCount}</span>
+                  {' results'}
+                </p>
+                {completedByDate.size === 0 ? (
+                  <div className="text-center py-16 text-gray-400">
+                    <svg className="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <p className="text-sm">No results found</p>
+                    {hasActiveFilters && (
+                      <button onClick={clearFilters} className="mt-2 text-blue-600 text-sm hover:text-blue-800" type="button">
+                        Clear filters
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {[...completedByDate.entries()].map(([dateKey, matches]) => (
+                      <section key={dateKey}>
+                        <DateDivider startTime={matches[0].startTime} />
                         <div className="space-y-2.5">
                           {matches.map((m) => <MatchCard key={m.id} match={m} />)}
                         </div>

@@ -347,7 +347,7 @@ export default function Home() {
               disabled={reloading}
               title="Reload data"
               type="button"
-              className="p-1.5 rounded-lg text-blue-200 hover:text-white hover:bg-brand-700 transition-colors disabled:opacity-50 flex-shrink-0"
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-brand-700 transition-colors disabled:opacity-50 flex-shrink-0"
             >
               <svg
                 className={`w-5 h-5 ${reloading ? 'animate-spin' : ''}`}
@@ -368,7 +368,7 @@ export default function Home() {
                 className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors
                   ${tab === id
                     ? 'bg-gray-50 text-brand-800'
-                    : 'text-blue-200 hover:text-white hover:bg-brand-700'
+                    : 'text-zinc-400 hover:text-white hover:bg-brand-700'
                   }`}
                 type="button"
               >

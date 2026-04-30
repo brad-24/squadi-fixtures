@@ -301,7 +301,7 @@ export default function Home() {
   const tabConfig = [
     { id: 'fixtures' as Tab, label: '📅 Fixtures' },
     { id: 'results' as Tab, label: '✅ Results' },
-    { id: 'ladder' as Tab, label: '🏆 Ladder' },
+    { id: 'ladder' as Tab, label: '🏆 Ladders' },
   ];
 
   const showExport = tab !== 'ladder' && fixtureData &&

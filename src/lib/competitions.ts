@@ -5,6 +5,7 @@ export const COMPETITIONS: [string, number][] = [
   ['94bcdbcb-36a1-4cd4-bdc3-a260f1c1ed58', 1331], // Community Seniors
   ['820aef84-2603-43b7-bece-dbe5894d331f', 1281], // FQPL 3 Men
   ['2c424449-2684-4297-af3e-02b0e7f208a2', 1284], // FQPL 3 Women
+  ['318866de-37e3-420d-87a6-3fc821e2ecba', 1557], // T2 Girls United League
 ];
 
 export const SQUADI_BASE = 'https://api.squadi.com/livescores';

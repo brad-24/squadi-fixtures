@@ -425,16 +425,18 @@ export default function Home() {
                 onChange={(v) => setFilters((f) => ({ ...f, ageGroups: v }))}
               />
             </FilterCell>
-            {tab !== 'ladder' && tab !== 'statistics' && (
+            {tab !== 'ladder' && (
               <>
-                <FilterCell label="Location">
-                  <MultiSelect
-                    label="Location"
-                    options={filterOptions.locations}
-                    selected={filters.locations}
-                    onChange={(v) => setFilters((f) => ({ ...f, locations: v }))}
-                  />
-                </FilterCell>
+                {tab !== 'statistics' && (
+                  <FilterCell label="Location">
+                    <MultiSelect
+                      label="Location"
+                      options={filterOptions.locations}
+                      selected={filters.locations}
+                      onChange={(v) => setFilters((f) => ({ ...f, locations: v }))}
+                    />
+                  </FilterCell>
+                )}
                 <FilterCell label="Club">
                   <MultiSelect
                     label="Club"
@@ -795,6 +797,8 @@ export default function Home() {
                 category={statsCategory}
                 selectedCompetitions={filters.competitions}
                 selectedAgeGroups={filters.ageGroups}
+                selectedClubs={filters.clubs}
+                selectedTeams={filters.teams}
               />
             )}
           </>

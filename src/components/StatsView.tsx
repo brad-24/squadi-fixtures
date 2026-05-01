@@ -1,10 +1,13 @@
 import type { StatsData, StatCategory, PlayerStatEntry } from '@/types';
+import { extractClub } from '@/lib/utils';
 
 interface Props {
   data: StatsData;
   category: StatCategory;
   selectedCompetitions: string[];
   selectedAgeGroups: string[];
+  selectedClubs: string[];
+  selectedTeams: string[];
 }
 
 const CATEGORY_LABELS: Record<StatCategory, string> = {
@@ -21,12 +24,14 @@ const COUNT_COLOURS: Record<StatCategory, string> = {
   redCards: 'text-red-700 bg-red-50/60',
 };
 
-export default function StatsView({ data, category, selectedCompetitions, selectedAgeGroups }: Props) {
+export default function StatsView({ data, category, selectedCompetitions, selectedAgeGroups, selectedClubs, selectedTeams }: Props) {
   const label = CATEGORY_LABELS[category];
 
   const entries: PlayerStatEntry[] = data[category].filter((e) => {
     if (selectedCompetitions.length && !selectedCompetitions.includes(e.competitionName)) return false;
     if (selectedAgeGroups.length && !selectedAgeGroups.includes(e.ageGroup)) return false;
+    if (selectedClubs.length && !selectedClubs.includes(extractClub(e.teamName))) return false;
+    if (selectedTeams.length && !selectedTeams.includes(e.teamName)) return false;
     return true;
   });
 

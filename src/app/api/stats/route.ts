@@ -73,9 +73,8 @@ export async function GET(request: Request) {
 
       for (const round of data.rounds ?? []) {
         for (const match of round.matches ?? []) {
-          const info: TeamInfo = { competitionName, divisionName, ageGroup };
-          if (match.team1?.id) teamMap.set(match.team1.id, { ...info, name: match.team1.name ?? '' });
-          if (match.team2?.id) teamMap.set(match.team2.id, { ...info, name: match.team2.name ?? '' });
+          if (match.team1?.id) teamMap.set(match.team1.id, { name: match.team1.name ?? '', competitionName, divisionName, ageGroup });
+          if (match.team2?.id) teamMap.set(match.team2.id, { name: match.team2.name ?? '', competitionName, divisionName, ageGroup });
 
           if (match.matchStatus === 'ENDED' && !seenMatchIds.has(match.id)) {
             seenMatchIds.add(match.id);

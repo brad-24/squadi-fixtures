@@ -340,7 +340,7 @@ export default function Home() {
                 className="h-8 w-8 object-contain flex-shrink-0"
                 unoptimized
               />
-              <h1 className="font-bold text-lg leading-tight">Football Queensland – Darling Downs</h1>
+              <h1 className="font-bold text-lg leading-tight">Football Queensland - Darling Downs - Season 2026</h1>
             </div>
             <button
               onClick={handleReload}

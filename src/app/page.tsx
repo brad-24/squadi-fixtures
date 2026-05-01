@@ -226,15 +226,7 @@ export default function Home() {
 
   function switchTab(newTab: Tab) {
     setTab(newTab);
-    if (newTab === 'results') {
-      setFilters((f) => ({
-        ...f,
-        dateFrom: subtractDays(new Date(), 14),
-        dateTo: todayStr(),
-      }));
-    } else {
-      setFilters((f) => ({ ...f, dateFrom: '', dateTo: '' }));
-    }
+    setFilters((f) => ({ ...f, dateFrom: '', dateTo: '' }));
   }
 
   function applyPreset(days: number, direction: 'future' | 'past') {

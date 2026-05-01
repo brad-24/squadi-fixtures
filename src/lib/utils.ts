@@ -13,6 +13,8 @@ const TRAILING_SUFFIXES = [
   /\s+Seniors?\s*$/i,
   /\s+Juniors?\s*$/i,
   /\s+JL\s*$/i,
+  /\s+A?FC\s*$/i,
+  /\s+SC\s*$/i,
 ];
 
 // Words that identify the specific team/colour/mascot within a club.

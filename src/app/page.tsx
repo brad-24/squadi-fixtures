@@ -131,27 +131,29 @@ export default function Home() {
 
   const filterOptions = useMemo(() => {
     if (!fixtureData) return { competitions: [], ageGroups: [], locations: [], clubs: [], teams: [] };
-    const competitions = [...new Set(fixtureData.allMatches.map((m) => m.competitionName))].sort();
-    const ageGroups = [...new Set(fixtureData.allMatches.map((m) => m.ageGroup))].sort();
-    const locations = [
-      ...new Set(
-        fixtureData.allMatches
-          .map((m) => m.venueCourt?.venue?.name)
-          .filter((v): v is string => !!v),
-      ),
-    ].sort();
-    const clubs = [
-      ...new Set(
-        fixtureData.allMatches
-          .flatMap((m) => [m.club1, m.club2])
-          .filter((c) => c && c.toLowerCase() !== 'bye'),
-      ),
-    ].sort();
-    const teams = [
-      ...new Set(fixtureData.allMatches.flatMap((m) => [m.team1.name, m.team2.name])),
-    ].sort();
+
+    // For each dimension, compute available options by applying all OTHER active filters.
+    // This gives cascading behaviour: selecting a Club narrows the Team list, etc.
+    function passes(m: Match, skip: keyof ActiveFilters): boolean {
+      if (skip !== 'competitions' && filters.competitions.length && !filters.competitions.includes(m.competitionName)) return false;
+      if (skip !== 'ageGroups' && filters.ageGroups.length && !filters.ageGroups.includes(m.ageGroup)) return false;
+      if (skip !== 'locations' && filters.locations.length && !filters.locations.includes(m.venueCourt?.venue?.name ?? '')) return false;
+      if (skip !== 'clubs' && filters.clubs.length && !filters.clubs.includes(m.club1) && !filters.clubs.includes(m.club2)) return false;
+      if (skip !== 'teams' && filters.teams.length && !filters.teams.includes(m.team1.name) && !filters.teams.includes(m.team2.name)) return false;
+      if (skip !== 'dateFrom' && filters.dateFrom && formatDateKey(m.startTime) < filters.dateFrom) return false;
+      if (skip !== 'dateTo' && filters.dateTo && formatDateKey(m.startTime) > filters.dateTo) return false;
+      return true;
+    }
+
+    const all = fixtureData.allMatches;
+    const competitions = [...new Set(all.filter(m => passes(m, 'competitions')).map(m => m.competitionName))].sort();
+    const ageGroups    = [...new Set(all.filter(m => passes(m, 'ageGroups')).map(m => m.ageGroup))].sort();
+    const locations    = [...new Set(all.filter(m => passes(m, 'locations')).map(m => m.venueCourt?.venue?.name).filter((v): v is string => !!v))].sort();
+    const clubs        = [...new Set(all.filter(m => passes(m, 'clubs')).flatMap(m => [m.club1, m.club2]).filter(c => c && c.toLowerCase() !== 'bye'))].sort();
+    const teams        = [...new Set(all.filter(m => passes(m, 'teams')).flatMap(m => [m.team1.name, m.team2.name]))].sort();
+
     return { competitions, ageGroups, locations, clubs, teams };
-  }, [fixtureData]);
+  }, [fixtureData, filters]);
 
   const filteredMatches = useMemo((): Match[] => {
     if (!fixtureData) return [];

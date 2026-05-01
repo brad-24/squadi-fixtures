@@ -149,8 +149,29 @@ export default function Home() {
     const competitions = [...new Set(all.filter(m => passes(m, 'competitions')).map(m => m.competitionName))].sort();
     const ageGroups    = [...new Set(all.filter(m => passes(m, 'ageGroups')).map(m => m.ageGroup))].sort();
     const locations    = [...new Set(all.filter(m => passes(m, 'locations')).map(m => m.venueCourt?.venue?.name).filter((v): v is string => !!v))].sort();
-    const clubs        = [...new Set(all.filter(m => passes(m, 'clubs')).flatMap(m => [m.club1, m.club2]).filter(c => c && c.toLowerCase() !== 'bye'))].sort();
-    const teams        = [...new Set(all.filter(m => passes(m, 'teams')).flatMap(m => [m.team1.name, m.team2.name]))].sort();
+
+    // For clubs: only include a team's club when that team matches the active team filter.
+    // For teams: only include a team when its club matches the active club filter.
+    // This prevents opponent clubs/teams from bleeding into the option lists.
+    const clubs = [...new Set(
+      all.filter(m => passes(m, 'clubs')).flatMap(m => {
+        const out: string[] = [];
+        const teamMatch = !filters.teams.length;
+        if ((teamMatch || filters.teams.includes(m.team1.name)) && m.club1 && m.club1.toLowerCase() !== 'bye') out.push(m.club1);
+        if ((teamMatch || filters.teams.includes(m.team2.name)) && m.club2 && m.club2.toLowerCase() !== 'bye') out.push(m.club2);
+        return out;
+      }),
+    )].sort();
+
+    const teams = [...new Set(
+      all.filter(m => passes(m, 'teams')).flatMap(m => {
+        const out: string[] = [];
+        const clubMatch = !filters.clubs.length;
+        if (clubMatch || filters.clubs.includes(m.club1)) out.push(m.team1.name);
+        if (clubMatch || filters.clubs.includes(m.club2)) out.push(m.team2.name);
+        return out;
+      }),
+    )].sort();
 
     return { competitions, ageGroups, locations, clubs, teams };
   }, [fixtureData, filters]);

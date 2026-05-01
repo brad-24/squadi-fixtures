@@ -13,6 +13,7 @@ type Tab = 'fixtures' | 'results' | 'ladder';
 const EMPTY_FILTERS: ActiveFilters = {
   competitions: [],
   ageGroups: [],
+  locations: [],
   clubs: [],
   teams: [],
   dateFrom: '',
@@ -110,9 +111,16 @@ export default function Home() {
   }
 
   const filterOptions = useMemo(() => {
-    if (!fixtureData) return { competitions: [], ageGroups: [], clubs: [], teams: [] };
+    if (!fixtureData) return { competitions: [], ageGroups: [], locations: [], clubs: [], teams: [] };
     const competitions = [...new Set(fixtureData.allMatches.map((m) => m.competitionName))].sort();
     const ageGroups = [...new Set(fixtureData.allMatches.map((m) => m.ageGroup))].sort();
+    const locations = [
+      ...new Set(
+        fixtureData.allMatches
+          .map((m) => m.venueCourt?.venue?.name)
+          .filter((v): v is string => !!v),
+      ),
+    ].sort();
     const clubs = [
       ...new Set(
         fixtureData.allMatches
@@ -123,7 +131,7 @@ export default function Home() {
     const teams = [
       ...new Set(fixtureData.allMatches.flatMap((m) => [m.team1.name, m.team2.name])),
     ].sort();
-    return { competitions, ageGroups, clubs, teams };
+    return { competitions, ageGroups, locations, clubs, teams };
   }, [fixtureData]);
 
   const filteredMatches = useMemo((): Match[] => {
@@ -132,6 +140,8 @@ export default function Home() {
       if (filters.competitions.length && !filters.competitions.includes(m.competitionName))
         return false;
       if (filters.ageGroups.length && !filters.ageGroups.includes(m.ageGroup)) return false;
+      if (filters.locations.length && !filters.locations.includes(m.venueCourt?.venue?.name ?? ''))
+        return false;
       if (filters.clubs.length && !filters.clubs.includes(m.club1) && !filters.clubs.includes(m.club2))
         return false;
       if (filters.teams.length && !filters.teams.includes(m.team1.name) && !filters.teams.includes(m.team2.name))
@@ -185,6 +195,7 @@ export default function Home() {
   const hasActiveFilters =
     filters.competitions.length > 0 ||
     filters.ageGroups.length > 0 ||
+    filters.locations.length > 0 ||
     filters.clubs.length > 0 ||
     filters.teams.length > 0 ||
     !!filters.dateFrom ||
@@ -382,7 +393,8 @@ export default function Home() {
       {/* Always-visible filter bar */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-3 space-y-3">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6 items-end">
+          {/* Dropdown filters */}
+          <div className={`grid grid-cols-2 gap-2 items-end ${tab !== 'ladder' ? 'sm:grid-cols-3 lg:grid-cols-5' : ''}`}>
             <FilterCell label="Competition">
               <MultiSelect
                 label="Competition"
@@ -401,6 +413,14 @@ export default function Home() {
             </FilterCell>
             {tab !== 'ladder' && (
               <>
+                <FilterCell label="Location">
+                  <MultiSelect
+                    label="Location"
+                    options={filterOptions.locations}
+                    selected={filters.locations}
+                    onChange={(v) => setFilters((f) => ({ ...f, locations: v }))}
+                  />
+                </FilterCell>
                 <FilterCell label="Club">
                   <MultiSelect
                     label="Club"
@@ -417,25 +437,31 @@ export default function Home() {
                     onChange={(v) => setFilters((f) => ({ ...f, teams: v }))}
                   />
                 </FilterCell>
-                <FilterCell label="From">
-                  <input
-                    type="date"
-                    value={filters.dateFrom}
-                    onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
-                    className="w-full px-2.5 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white focus:outline-none focus:border-blue-500 h-[38px]"
-                  />
-                </FilterCell>
-                <FilterCell label="To">
-                  <input
-                    type="date"
-                    value={filters.dateTo}
-                    onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
-                    className="w-full px-2.5 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white focus:outline-none focus:border-blue-500 h-[38px]"
-                  />
-                </FilterCell>
               </>
             )}
           </div>
+
+          {/* Date range — separate row so dropdowns aren't squeezed */}
+          {tab !== 'ladder' && (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 items-end">
+              <FilterCell label="From">
+                <input
+                  type="date"
+                  value={filters.dateFrom}
+                  onChange={(e) => setFilters((f) => ({ ...f, dateFrom: e.target.value }))}
+                  className="w-full px-2.5 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white focus:outline-none focus:border-blue-500 h-[38px]"
+                />
+              </FilterCell>
+              <FilterCell label="To">
+                <input
+                  type="date"
+                  value={filters.dateTo}
+                  onChange={(e) => setFilters((f) => ({ ...f, dateTo: e.target.value }))}
+                  className="w-full px-2.5 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white focus:outline-none focus:border-blue-500 h-[38px]"
+                />
+              </FilterCell>
+            </div>
+          )}
 
           {tab !== 'ladder' && (
             <div className="flex items-center gap-2 flex-wrap">

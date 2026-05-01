@@ -109,6 +109,7 @@ export interface LadderData {
 export interface ActiveFilters {
   competitions: string[];
   ageGroups: string[];
+  locations: string[];
   clubs: string[];
   teams: string[];
   dateFrom: string;

@@ -2,13 +2,21 @@
 
 import { useEffect, useState, useMemo, type ReactNode } from 'react';
 import Image from 'next/image';
-import type { FixtureData, LadderData, ActiveFilters, Match } from '@/types';
+import type { FixtureData, LadderData, ActiveFilters, Match, StatsData, StatCategory } from '@/types';
 import { formatMatchDate, formatDateKey, formatMatchTime, getStatusLabel } from '@/lib/utils';
 import MultiSelect from '@/components/MultiSelect';
 import MatchCard from '@/components/MatchCard';
 import LadderView from '@/components/LadderView';
+import StatsView from '@/components/StatsView';
 
-type Tab = 'fixtures' | 'results' | 'ladder';
+type Tab = 'fixtures' | 'results' | 'ladder' | 'statistics';
+
+const STAT_CATEGORIES: { key: StatCategory; label: string }[] = [
+  { key: 'goals', label: 'Goals' },
+  { key: 'assists', label: 'Assists' },
+  { key: 'yellowCards', label: 'Yellow Cards' },
+  { key: 'redCards', label: 'Red Cards' },
+];
 
 const EMPTY_FILTERS: ActiveFilters = {
   competitions: [],
@@ -80,6 +88,9 @@ export default function Home() {
   const [filters, setFilters] = useState<ActiveFilters>(EMPTY_FILTERS);
   const [reloading, setReloading] = useState(false);
   const [showPastFixtures, setShowPastFixtures] = useState(false);
+  const [statsData, setStatsData] = useState<StatsData | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const [statsCategory, setStatsCategory] = useState<StatCategory>('goals');
 
   useEffect(() => {
     fetch('/api/fixtures')
@@ -90,21 +101,29 @@ export default function Home() {
       .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
       .then(setLadderData)
       .catch((e) => setLadderError(e.message));
+    fetch('/api/stats')
+      .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
+      .then(setStatsData)
+      .catch((e) => setStatsError(e.message));
   }, []);
 
   async function handleReload() {
     setReloading(true);
     setFixtureError(null);
     setLadderError(null);
+    setStatsError(null);
     try {
-      const [fRes, lRes] = await Promise.all([
+      const [fRes, lRes, sRes] = await Promise.all([
         fetch('/api/fixtures?force=1', { cache: 'no-store' }),
         fetch('/api/ladder?force=1', { cache: 'no-store' }),
+        fetch('/api/stats?force=1', { cache: 'no-store' }),
       ]);
       if (fRes.ok) setFixtureData(await fRes.json());
       else setFixtureError(String(fRes.status));
       if (lRes.ok) setLadderData(await lRes.json());
       else setLadderError(String(lRes.status));
+      if (sRes.ok) setStatsData(await sRes.json());
+      else setStatsError(String(sRes.status));
     } catch { /* keep existing data visible */ } finally {
       setReloading(false);
     }
@@ -331,6 +350,7 @@ export default function Home() {
     { id: 'fixtures' as Tab, label: '📅 Fixtures' },
     { id: 'results' as Tab, label: '✅ Results' },
     { id: 'ladder' as Tab, label: '🏆 Ladders' },
+    { id: 'statistics' as Tab, label: '📊 Statistics' },
   ];
 
   const showExport = tab !== 'ladder' && fixtureData &&
@@ -411,7 +431,7 @@ export default function Home() {
                 onChange={(v) => setFilters((f) => ({ ...f, ageGroups: v }))}
               />
             </FilterCell>
-            {tab !== 'ladder' && (
+            {tab !== 'ladder' && tab !== 'statistics' && (
               <>
                 <FilterCell label="Location">
                   <MultiSelect
@@ -441,8 +461,8 @@ export default function Home() {
             )}
           </div>
 
-          {/* Date range — separate row so dropdowns aren't squeezed */}
-          {tab !== 'ladder' && (
+          {/* Date range — fixtures and results only */}
+          {tab !== 'ladder' && tab !== 'statistics' && (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 items-end">
               <FilterCell label="From">
                 <input
@@ -463,7 +483,8 @@ export default function Home() {
             </div>
           )}
 
-          {tab !== 'ladder' && (
+          {/* Date presets — fixtures and results only */}
+          {tab !== 'ladder' && tab !== 'statistics' && (
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-gray-400 font-medium">
                 {tab === 'fixtures' ? 'Upcoming:' : 'Past:'}
@@ -516,7 +537,42 @@ export default function Home() {
             </div>
           )}
 
-          {tab === 'ladder' && hasActiveFilters && (
+          {/* Category filter — statistics only */}
+          {tab === 'statistics' && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-gray-400 font-medium">Category:</span>
+              <div className="flex gap-1.5 flex-wrap">
+                {STAT_CATEGORIES.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setStatsCategory(key)}
+                    type="button"
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors
+                      ${statsCategory === key
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  type="button"
+                  className="ml-auto flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+
+          {(tab === 'ladder') && hasActiveFilters && (
             <button
               onClick={clearFilters}
               type="button"
@@ -718,6 +774,31 @@ export default function Home() {
             {ladderData && (
               <LadderView
                 data={ladderData}
+                selectedCompetitions={filters.competitions}
+                selectedAgeGroups={filters.ageGroups}
+              />
+            )}
+          </>
+        )}
+
+        {/* ── STATISTICS TAB ── */}
+        {tab === 'statistics' && (
+          <>
+            {statsError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-4 text-sm">
+                Error loading statistics: {statsError}
+              </div>
+            )}
+            {!statsData && !statsError && (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <p className="text-gray-500 text-sm">Loading statistics…</p>
+              </div>
+            )}
+            {statsData && (
+              <StatsView
+                data={statsData}
+                category={statsCategory}
                 selectedCompetitions={filters.competitions}
                 selectedAgeGroups={filters.ageGroups}
               />

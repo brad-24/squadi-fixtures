@@ -104,7 +104,29 @@ export interface LadderData {
   laddersByDivision: LadderDivision[];
 }
 
-// ── Filters ─────────────────────────────────────────────────────────────────
+// ── Statistics ───────────────────────────────────────────────────────────────
+
+export type StatCategory = 'goals' | 'assists' | 'yellowCards' | 'redCards';
+
+export interface PlayerStatEntry {
+  playerName: string;
+  shirt: string;
+  teamId: number;
+  teamName: string;
+  competitionName: string;
+  ageGroup: string;
+  divisionName: string;
+  count: number;
+}
+
+export interface StatsData {
+  goals: PlayerStatEntry[];
+  assists: PlayerStatEntry[];
+  yellowCards: PlayerStatEntry[];
+  redCards: PlayerStatEntry[];
+}
+
+// ── Filters ───────────────────────────────────────────────────────────────────
 
 export interface ActiveFilters {
   competitions: string[];

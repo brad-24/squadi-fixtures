@@ -8,15 +8,12 @@ const STATS_COMPETITIONS = COMPETITIONS.filter(
   ([key]) => key !== '1e6ec610-7f27-4d97-bc8e-7908ad58188c',
 );
 
-function classifyStat(displayName: string): StatCategory | null {
-  const d = displayName.toLowerCase();
-  if (d === 'own goal') return null;
-  if (d.includes('goal')) return 'goals';
-  if (d.includes('assist')) return 'assists';
-  if (d.includes('yellow')) return 'yellowCards';
-  if (d.includes('red card')) return 'redCards';
-  return null;
-}
+const STAT_TYPES: Record<StatCategory, string> = {
+  goals: 'G,PG',
+  assists: 'A',
+  yellowCards: 'Y1,Y2,Y3,Y4,Y5,Y6,Y7,Y8,YC,YD',
+  redCards: 'R1,R2,R3,R4,R5,R6,R7,R8,RC',
+};
 
 function makeSquadiGet(noCache: boolean) {
   return async function squadiGet(path: string) {
@@ -29,124 +26,67 @@ function makeSquadiGet(noCache: boolean) {
   };
 }
 
-interface TeamInfo {
-  name: string;
-  competitionName: string;
-  divisionName: string;
-  ageGroup: string;
-}
-
 export async function GET(request: Request) {
   const force = new URL(request.url).searchParams.get('force') === '1';
   const squadiGet = makeSquadiGet(force);
 
   try {
-    const [compResults, divisionResults] = await Promise.all([
-      Promise.all(STATS_COMPETITIONS.map(([, id]) => squadiGet(`/competitions/id/${id}`))),
-      Promise.all(STATS_COMPETITIONS.map(([key]) => squadiGet(`/division?competitionKey=${key}`))),
-    ]);
+    const compResults = await Promise.all(
+      STATS_COMPETITIONS.map(([, id]) => squadiGet(`/competitions/id/${id}`)),
+    );
 
     const compNameMap = new Map<number, string>(
       STATS_COMPETITIONS.map(([, id], i) => [id, compResults[i]?.name ?? '']),
     );
 
-    const matchFetches = divisionResults.flatMap((divisions: {id:number;name:string}[], ci) => {
-      const [, compId] = STATS_COMPETITIONS[ci];
-      return divisions.map((div) =>
-        squadiGet(`/round/matches?competitionId=${compId}&divisionId=${div.id}&ignoreStatuses=%5B4%5D`)
-          .then((data) => ({ data, div, compId }))
-          .catch(() => ({ data: { rounds: [] }, div, compId })),
-      );
-    });
+    const yearRefId = compResults[0]?.yearRefId ?? 8;
 
-    const roundResults = await Promise.all(matchFetches);
-
-    // Build teamId → info map and collect ended match IDs
-    const teamMap = new Map<number, TeamInfo>();
-    const seenMatchIds = new Set<number>();
-    const endedMatchIds: number[] = [];
-
-    for (const { data, div, compId } of roundResults) {
-      const competitionName = compNameMap.get(compId) ?? '';
-      const divisionName = div.name;
-      const ageGroup = extractAgeGroup(divisionName);
-
-      for (const round of data.rounds ?? []) {
-        for (const match of round.matches ?? []) {
-          if (match.team1?.id) teamMap.set(match.team1.id, { name: match.team1.name ?? '', competitionName, divisionName, ageGroup });
-          if (match.team2?.id) teamMap.set(match.team2.id, { name: match.team2.name ?? '', competitionName, divisionName, ageGroup });
-
-          if (match.matchStatus === 'ENDED' && !seenMatchIds.has(match.id)) {
-            seenMatchIds.add(match.id);
-            endedMatchIds.push(match.id);
-          }
-        }
-      }
-    }
-
-    // Fetch events for every ended match in parallel
-    const fetchHeaders = {
-      headers: SQUADI_HEADERS,
-      ...(force ? { cache: 'no-store' as const } : { next: { revalidate: 300 } }),
-    };
-
-    const eventResults = await Promise.all(
-      endedMatchIds.map((id) =>
-        fetch(`${SQUADI_BASE}/matches/public/events?matchId=${id}`, fetchHeaders)
-          .then((r) => (r.ok ? r.json() : []))
-          .catch(() => []),
+    const fetches = STATS_COMPETITIONS.flatMap(([, compId]) =>
+      (Object.entries(STAT_TYPES) as [StatCategory, string][]).map(([category, statType]) =>
+        squadiGet(
+          `/stats/public/scoringStatsByGrade?statType=${encodeURIComponent(statType)}&competitionId=${compId}&yearRefId=${yearRefId}&offset=0&limit=-1`,
+        )
+          .then((data) => ({ data, compId, category }))
+          .catch(() => ({ data: { result: [] }, compId, category })),
       ),
     );
 
-    // Aggregate stats per player
-    type Accum = Map<string, PlayerStatEntry>;
-    const accum: Record<StatCategory, Accum> = {
-      goals: new Map(),
-      assists: new Map(),
-      yellowCards: new Map(),
-      redCards: new Map(),
+    const allResults = await Promise.all(fetches);
+
+    const accum: Record<StatCategory, PlayerStatEntry[]> = {
+      goals: [],
+      assists: [],
+      yellowCards: [],
+      redCards: [],
     };
 
-    for (const events of eventResults) {
-      if (!Array.isArray(events)) continue;
-      for (const event of events) {
-        if (event.type !== 'stat' || !event.stat || !event.teamId) continue;
-        const player = event.players?.[0];
-        if (!player?.name) continue;
+    for (const { data, compId, category } of allResults) {
+      const competitionName = compNameMap.get(compId) ?? '';
+      for (const item of data.result ?? []) {
+        const playerName = `${item.firstName ?? ''} ${item.lastName ?? ''}`.trim();
+        if (!playerName) continue;
 
-        const category = classifyStat(event.stat.displayName ?? '');
-        if (!category) continue;
+        const count = parseInt(item.PTS ?? '0', 10);
+        if (!count) continue;
 
-        const teamInfo = teamMap.get(event.teamId);
-        if (!teamInfo) continue;
-
-        const key = `${player.name}|||${event.teamId}`;
-        const existing = accum[category].get(key);
-        if (existing) {
-          existing.count += 1;
-        } else {
-          accum[category].set(key, {
-            playerName: player.name,
-            shirt: player.shirt ?? '',
-            teamId: event.teamId,
-            teamName: teamInfo.name,
-            competitionName: teamInfo.competitionName,
-            ageGroup: teamInfo.ageGroup,
-            divisionName: teamInfo.divisionName,
-            count: 1,
-          });
-        }
+        accum[category].push({
+          playerName,
+          shirt: item.shirt ?? '',
+          teamId: item.playerId ?? 0,
+          teamName: item.teamName ?? '',
+          competitionName,
+          ageGroup: extractAgeGroup(item.divisionName ?? ''),
+          divisionName: item.divisionName ?? '',
+          count,
+        });
       }
     }
 
-    const sort = (m: Accum): PlayerStatEntry[] =>
-      [...m.values()].sort((a, b) => b.count - a.count);
-
     const stats: StatsData = {
-      goals: sort(accum.goals),
-      assists: sort(accum.assists),
-      yellowCards: sort(accum.yellowCards),
-      redCards: sort(accum.redCards),
+      goals: accum.goals.sort((a, b) => b.count - a.count),
+      assists: accum.assists.sort((a, b) => b.count - a.count),
+      yellowCards: accum.yellowCards.sort((a, b) => b.count - a.count),
+      redCards: accum.redCards.sort((a, b) => b.count - a.count),
     };
 
     return NextResponse.json(stats, {

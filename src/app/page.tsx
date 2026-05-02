@@ -58,7 +58,11 @@ function subtractDays(date: Date, days: number): string {
 }
 
 function todayStr(): string {
-  return new Date().toLocaleDateString('en-CA');
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Australia/Brisbane' });
+}
+
+function isUpcoming(startTime: string): boolean {
+  return new Date(startTime) > new Date();
 }
 
 function isPresetActive(filters: ActiveFilters, days: number, direction: 'future' | 'past'): boolean {
@@ -197,11 +201,10 @@ export default function Home() {
   // Upcoming = not yet played (ascending date order)
   // When showPastFixtures is false, clamp to today onwards
   const upcomingByDate = useMemo(() => {
-    const today = todayStr();
     const groups = new Map<string, Match[]>();
     for (const m of filteredMatches) {
       if (m.matchStatus?.toUpperCase() === 'ENDED') continue;
-      if (!showPastFixtures && formatDateKey(m.startTime) < today) continue;
+      if (!showPastFixtures && !isUpcoming(m.startTime)) continue;
       const key = formatDateKey(m.startTime);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(m);
@@ -222,10 +225,9 @@ export default function Home() {
   }, [filteredMatches]);
 
   const upcomingCount = useMemo(() => {
-    const today = todayStr();
     return filteredMatches.filter((m) => {
       if (m.matchStatus?.toUpperCase() === 'ENDED') return false;
-      if (!showPastFixtures && formatDateKey(m.startTime) < today) return false;
+      if (!showPastFixtures && !isUpcoming(m.startTime)) return false;
       return true;
     }).length;
   }, [filteredMatches, showPastFixtures]);
@@ -261,12 +263,11 @@ export default function Home() {
   }
 
   function exportToCSV() {
-    const today = todayStr();
     const matches = tab === 'results'
       ? filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED')
       : filteredMatches.filter((m) => {
           if (m.matchStatus?.toUpperCase() === 'ENDED') return false;
-          if (!showPastFixtures && formatDateKey(m.startTime) < today) return false;
+          if (!showPastFixtures && !isUpcoming(m.startTime)) return false;
           return true;
         });
 
@@ -303,12 +304,11 @@ export default function Home() {
   }
 
   function exportToICS() {
-    const today = todayStr();
     const matches = tab === 'results'
       ? filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED')
       : filteredMatches.filter((m) => {
           if (m.matchStatus?.toUpperCase() === 'ENDED') return false;
-          if (!showPastFixtures && formatDateKey(m.startTime) < today) return false;
+          if (!showPastFixtures && !isUpcoming(m.startTime)) return false;
           return true;
         });
 

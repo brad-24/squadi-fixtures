@@ -14,9 +14,8 @@ export async function GET(request: Request) {
     const data = await res.json();
 
     const GOAL_TYPES = new Set(['G', 'PG', 'OG']);
-    const events = (Array.isArray(data) ? data : []).filter((e: { eventCategory: string; type: string; isHidden: number }) =>
+    const events = (Array.isArray(data) ? data : []).filter((e: { eventCategory: string; type: string }) =>
       e.eventCategory === 'stat' &&
-      e.isHidden === 0 &&
       (GOAL_TYPES.has(e.type) || e.type.startsWith('Y') || e.type.startsWith('R')),
     );
 

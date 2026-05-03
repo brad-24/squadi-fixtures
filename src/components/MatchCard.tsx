@@ -98,34 +98,37 @@ export default function MatchCard({ match, showEvents = false }: Props) {
   const awayWins = isEnded && match.team2ResultId === 1;
   const hasScores = match.team1Score !== null || match.team2Score !== null;
 
-  const [homeEvents, setHomeEvents] = useState<DisplayEvent[]>([]);
-  const [awayEvents, setAwayEvents] = useState<DisplayEvent[]>([]);
+  interface EventRow {
+    id: number;
+    kind: 'goal' | 'yellow' | 'red';
+    minute: number;
+    playerName: string;
+    side: 'home' | 'away';
+  }
+
+  const [events, setEvents] = useState<EventRow[]>([]);
 
   useEffect(() => {
     if (!showEvents) return;
     fetch(`/api/match-events?matchId=${match.id}`)
       .then((r) => r.ok ? r.json() : [])
       .then((raw: MatchEvent[]) => {
-        const home: DisplayEvent[] = [];
-        const away: DisplayEvent[] = [];
+        const rows: EventRow[] = [];
         for (const e of raw) {
           const kind = getEventKind(e.type);
           if (!kind) continue;
           const playerName = [e.firstName, e.lastName].filter(Boolean).join(' ') || `#${e.shirt}`;
           const minute = getGameMinute(e.eventTimestamp, match.startTime);
-          const entry = { id: e.id, kind, minute, playerName };
-          if (e.teamId === match.team1.id) home.push(entry);
-          else away.push(entry);
+          const side = e.teamId === match.team1.id ? 'home' : 'away';
+          rows.push({ id: e.id, kind, minute, playerName, side });
         }
-        home.sort((a, b) => a.minute - b.minute);
-        away.sort((a, b) => a.minute - b.minute);
-        setHomeEvents(home);
-        setAwayEvents(away);
+        rows.sort((a, b) => a.minute - b.minute);
+        setEvents(rows);
       })
       .catch(() => {});
   }, [match.id, match.startTime, match.team1.id, showEvents]);
 
-  const hasEvents = homeEvents.length > 0 || awayEvents.length > 0;
+  const hasEvents = events.length > 0;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
@@ -186,34 +189,22 @@ export default function MatchCard({ match, showEvents = false }: Props) {
 
       {/* Events */}
       {showEvents && hasEvents && (
-        <div className="px-3 pb-2.5 pt-0 flex gap-3 border-t border-gray-50">
-          {/* Home events */}
-          <div className="flex-1 flex flex-col gap-1 pt-2">
-            {homeEvents.map((e) => (
-              <div key={e.id} className="flex items-center gap-1">
-                {e.kind === 'goal' && <GoalIcon />}
-                {e.kind === 'yellow' && <YellowCardIcon />}
-                {e.kind === 'red' && <RedCardIcon />}
-                <span className="text-xs text-gray-500 leading-tight">
-                  {e.minute}' {e.playerName}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Away events */}
-          <div className="flex-1 flex flex-col gap-1 pt-2 items-end">
-            {awayEvents.map((e) => (
-              <div key={e.id} className="flex items-center gap-1 justify-end">
-                <span className="text-xs text-gray-500 leading-tight text-right">
-                  {e.playerName} {e.minute}'
-                </span>
+        <div className="px-3 pb-2.5 pt-2 flex flex-col gap-1 border-t border-gray-50">
+          {events.map((e) => (
+            <div key={e.id} className="flex items-center gap-2">
+              <span className="flex-1 text-xs text-gray-500 leading-tight text-right">
+                {e.side === 'home' ? `${e.playerName} ${e.minute}'` : ''}
+              </span>
+              <div className="flex-shrink-0 flex items-center justify-center w-5">
                 {e.kind === 'goal' && <GoalIcon />}
                 {e.kind === 'yellow' && <YellowCardIcon />}
                 {e.kind === 'red' && <RedCardIcon />}
               </div>
-            ))}
-          </div>
+              <span className="flex-1 text-xs text-gray-500 leading-tight">
+                {e.side === 'away' ? `${e.minute}' ${e.playerName}` : ''}
+              </span>
+            </div>
+          ))}
         </div>
       )}
 

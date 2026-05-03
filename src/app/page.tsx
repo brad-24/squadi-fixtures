@@ -67,7 +67,9 @@ function isUpcoming(startTime: string): boolean {
 
 function isInProgress(m: Match): boolean {
   const s = m.matchStatus?.toUpperCase();
-  return s === 'STARTED' || s === 'PAUSED';
+  if (s === 'ENDED') return false;
+  if (s === 'STARTED' || s === 'PAUSED') return true;
+  return !isUpcoming(m.startTime);
 }
 
 function isPresetActive(filters: ActiveFilters, days: number, direction: 'future' | 'past'): boolean {

@@ -54,9 +54,10 @@ function TeamRow({
 
 export default function MatchCard({ match }: Props) {
   const isEnded = match.matchStatus?.toUpperCase() === 'ENDED';
-  const isLive = match.matchStatus?.toUpperCase() === 'STARTED';
-  const statusLabel = getStatusLabel(match.matchStatus);
-  const statusClasses = getStatusClasses(match.matchStatus);
+  const isLive = match.matchStatus?.toUpperCase() === 'STARTED' ||
+    (!match.matchStatus && new Date(match.startTime) <= new Date());
+  const statusLabel = getStatusLabel(match.matchStatus, match.startTime);
+  const statusClasses = getStatusClasses(match.matchStatus, match.startTime);
   const venue = match.venueCourt?.venue;
   const court = match.venueCourt?.name;
 

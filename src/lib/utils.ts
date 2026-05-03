@@ -94,8 +94,11 @@ export function formatDateKey(utcString: string): string {
   return date.toLocaleDateString('en-CA', { timeZone: 'Australia/Brisbane' }); // YYYY-MM-DD
 }
 
-export function getStatusLabel(status: string | null): string {
-  if (!status) return 'Upcoming';
+export function getStatusLabel(status: string | null, startTime?: string): string {
+  if (!status) {
+    if (startTime && new Date(startTime) <= new Date()) return 'Live';
+    return 'Upcoming';
+  }
   switch (status.toUpperCase()) {
     case 'ENDED': return 'Final';
     case 'STARTED': return 'Live';
@@ -104,8 +107,11 @@ export function getStatusLabel(status: string | null): string {
   }
 }
 
-export function getStatusClasses(status: string | null): string {
-  if (!status) return 'bg-blue-100 text-blue-700';
+export function getStatusClasses(status: string | null, startTime?: string): string {
+  if (!status) {
+    if (startTime && new Date(startTime) <= new Date()) return 'bg-green-100 text-green-700 animate-pulse';
+    return 'bg-blue-100 text-blue-700';
+  }
   switch (status.toUpperCase()) {
     case 'ENDED': return 'bg-gray-100 text-gray-600';
     case 'STARTED': return 'bg-green-100 text-green-700 animate-pulse';

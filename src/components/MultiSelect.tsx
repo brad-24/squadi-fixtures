@@ -84,12 +84,11 @@ export default function MultiSelect({ label, options, selected, onChange }: Prop
         />
         <button
           type="button"
-          onMouseDown={(e) => {
-            e.preventDefault();
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={(e) => {
             e.stopPropagation();
-            setOpen((v) => !v);
-            if (open) { setQuery(''); inputRef.current?.blur(); }
-            else inputRef.current?.focus();
+            if (open) { setOpen(false); setQuery(''); inputRef.current?.blur(); }
+            else { setOpen(true); inputRef.current?.focus(); }
           }}
           className="flex-shrink-0 flex items-center"
         >

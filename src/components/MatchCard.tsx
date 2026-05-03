@@ -216,7 +216,7 @@ export default function MatchCard({ match, showEvents = false }: Props) {
                 <div className="flex-1 flex flex-col gap-0.5">
                   {away.map(e => (
                     <span key={e.key} className="text-xs text-gray-500 leading-tight">
-                      {e.minutes.map(m => `${m}'`).join(', ')} {e.playerName}
+                      {e.playerName} {e.minutes.map(m => `${m}'`).join(', ')}
                     </span>
                   ))}
                 </div>

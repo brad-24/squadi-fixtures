@@ -82,16 +82,28 @@ export default function MultiSelect({ label, options, selected, onChange }: Prop
               : 'text-gray-700 placeholder-gray-600'
             }`}
         />
-        <svg
-          className={`w-4 h-4 flex-shrink-0 transition-transform pointer-events-none
-            ${open ? 'rotate-180' : ''}
-            ${hasSelection ? 'text-white' : 'text-gray-400'}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+        <button
+          type="button"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen((v) => !v);
+            if (open) { setQuery(''); inputRef.current?.blur(); }
+            else inputRef.current?.focus();
+          }}
+          className="flex-shrink-0 flex items-center"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+          <svg
+            className={`w-4 h-4 transition-transform
+              ${open ? 'rotate-180' : ''}
+              ${hasSelection ? 'text-white' : 'text-gray-400'}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
       </div>
 
       {open && (

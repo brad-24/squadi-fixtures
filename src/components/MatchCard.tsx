@@ -190,33 +190,37 @@ export default function MatchCard({ match, showEvents = false }: Props) {
         </div>
       </div>
 
-      {/* Events */}
+      {/* Events — one row per icon type */}
       {showEvents && hasEvents && (
-        <div className="px-3 pb-2.5 pt-2 flex gap-2 border-t border-gray-50">
-          <div className="flex-1 flex flex-col gap-0.5 items-end">
-            {homeEvents.map((e) => (
-              <div key={e.key} className="flex items-center gap-1">
-                <span className="text-xs text-gray-500 leading-tight text-right">
-                  {e.playerName} {e.minutes.map(m => `${m}'`).join(', ')}
-                </span>
-                {e.kind === 'goal' && <GoalIcon />}
-                {e.kind === 'yellow' && <YellowCardIcon />}
-                {e.kind === 'red' && <RedCardIcon />}
+        <div className="px-3 pb-2.5 pt-2 flex flex-col gap-1 border-t border-gray-50">
+          {(['goal', 'yellow', 'red'] as const).map((kind) => {
+            const home = homeEvents.filter(e => e.kind === kind);
+            const away = awayEvents.filter(e => e.kind === kind);
+            if (!home.length && !away.length) return null;
+            return (
+              <div key={kind} className="flex items-start gap-1">
+                <div className="flex-1 flex flex-col gap-0.5 items-end">
+                  {home.map(e => (
+                    <span key={e.key} className="text-xs text-gray-500 leading-tight text-right">
+                      {e.playerName} {e.minutes.map(m => `${m}'`).join(', ')}
+                    </span>
+                  ))}
+                </div>
+                <div className="w-6 flex justify-center flex-shrink-0 pt-0.5">
+                  {kind === 'goal' && <GoalIcon />}
+                  {kind === 'yellow' && <YellowCardIcon />}
+                  {kind === 'red' && <RedCardIcon />}
+                </div>
+                <div className="flex-1 flex flex-col gap-0.5">
+                  {away.map(e => (
+                    <span key={e.key} className="text-xs text-gray-500 leading-tight">
+                      {e.minutes.map(m => `${m}'`).join(', ')} {e.playerName}
+                    </span>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
-          <div className="flex-1 flex flex-col gap-0.5">
-            {awayEvents.map((e) => (
-              <div key={e.key} className="flex items-center gap-1">
-                {e.kind === 'goal' && <GoalIcon />}
-                {e.kind === 'yellow' && <YellowCardIcon />}
-                {e.kind === 'red' && <RedCardIcon />}
-                <span className="text-xs text-gray-500 leading-tight">
-                  {e.minutes.map(m => `${m}'`).join(', ')} {e.playerName}
-                </span>
-              </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       )}
 

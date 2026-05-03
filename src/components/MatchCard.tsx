@@ -10,44 +10,23 @@ interface Props {
   match: Match;
 }
 
-function TeamRow({
-  team,
-  score,
-  resultId,
-  isEnded,
-}: {
-  team: Match['team1'];
-  score: number | null;
-  resultId: number | null;
-  isEnded: boolean;
-}) {
-  const isWinner = isEnded && resultId === 1;
+function TeamLogo({ team }: { team: Match['team1'] }) {
   return (
-    <div className={`flex items-center gap-2.5 py-1 ${isWinner ? 'font-semibold' : ''}`}>
-      <div className="w-7 h-7 flex-shrink-0 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-        {team.logoUrl ? (
-          <Image
-            src={team.logoUrl}
-            alt={team.name}
-            width={28}
-            height={28}
-            className="w-full h-full object-contain"
-            unoptimized
-          />
-        ) : (
-          <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" />
-          </svg>
-        )}
-      </div>
-      <span className="flex-1 text-sm leading-tight text-gray-800 truncate">{team.name}</span>
-      <span
-        className={`text-base tabular-nums w-6 text-right flex-shrink-0 ${
-          isWinner ? 'text-gray-900' : 'text-gray-500'
-        }`}
-      >
-        {score !== null ? score : '–'}
-      </span>
+    <div className="w-7 h-7 flex-shrink-0 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+      {team.logoUrl ? (
+        <Image
+          src={team.logoUrl}
+          alt={team.name}
+          width={28}
+          height={28}
+          className="w-full h-full object-contain"
+          unoptimized
+        />
+      ) : (
+        <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10" />
+        </svg>
+      )}
     </div>
   );
 }
@@ -63,6 +42,10 @@ export default function MatchCard({ match }: Props) {
   const statusClasses = getStatusClasses(match.matchStatus, match.startTime);
   const venue = match.venueCourt?.venue;
   const court = match.venueCourt?.name;
+
+  const homeWins = isEnded && match.team1ResultId === 1;
+  const awayWins = isEnded && match.team2ResultId === 1;
+  const hasScores = match.team1Score !== null || match.team2Score !== null;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
@@ -85,23 +68,43 @@ export default function MatchCard({ match }: Props) {
         </div>
       </div>
 
-      {/* Teams */}
-      <div className="px-3 pt-2 pb-1">
-        <TeamRow
-          team={match.team1}
-          score={match.team1Score}
-          resultId={match.team1ResultId}
-          isEnded={isEnded}
-        />
-        <TeamRow
-          team={match.team2}
-          score={match.team2Score}
-          resultId={match.team2ResultId}
-          isEnded={isEnded}
-        />
+      {/* Teams + Score */}
+      <div className="px-3 py-3 flex items-center gap-2">
+        {/* Home team */}
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <TeamLogo team={match.team1} />
+          <span className={`text-sm leading-tight truncate ${homeWins ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+            {match.team1.name}
+          </span>
+        </div>
+
+        {/* Score */}
+        <div className="flex items-center gap-1 flex-shrink-0 tabular-nums">
+          {hasScores ? (
+            <>
+              <span className={`text-lg font-bold w-6 text-center ${homeWins ? 'text-gray-900' : 'text-gray-500'}`}>
+                {match.team1Score ?? '–'}
+              </span>
+              <span className="text-base text-gray-400 font-medium">-</span>
+              <span className={`text-lg font-bold w-6 text-center ${awayWins ? 'text-gray-900' : 'text-gray-500'}`}>
+                {match.team2Score ?? '–'}
+              </span>
+            </>
+          ) : (
+            <span className="text-sm text-gray-400 font-medium px-1">vs</span>
+          )}
+        </div>
+
+        {/* Away team */}
+        <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+          <span className={`text-sm leading-tight truncate text-right ${awayWins ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+            {match.team2.name}
+          </span>
+          <TeamLogo team={match.team2} />
+        </div>
       </div>
 
-      {/* Footer — venue only */}
+      {/* Footer — venue */}
       {venue && (
         <div className="px-3 py-2 border-t border-gray-100">
           <span className="flex items-center gap-1 text-xs text-gray-400">

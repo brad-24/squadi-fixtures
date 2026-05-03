@@ -98,7 +98,6 @@ export default function Home() {
   const [ladderError, setLadderError] = useState<string | null>(null);
   const [filters, setFilters] = useState<ActiveFilters>(EMPTY_FILTERS);
   const [reloading, setReloading] = useState(false);
-  const [showPastFixtures, setShowPastFixtures] = useState(false);
   const [statsData, setStatsData] = useState<StatsData | null>(null);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [statsCategory, setStatsCategory] = useState<StatCategory>('goals');
@@ -205,19 +204,18 @@ export default function Home() {
     });
   }, [fixtureData, filters]);
 
-  // Upcoming = not yet ended, including live/in-progress (ascending date order)
-  // When showPastFixtures is false, clamp to today onwards (live games always shown)
+  // Upcoming = live (in-progress) and future matches only
   const upcomingByDate = useMemo(() => {
     const groups = new Map<string, Match[]>();
     for (const m of filteredMatches) {
       if (m.matchStatus?.toUpperCase() === 'ENDED') continue;
-      if (!showPastFixtures && !isUpcoming(m.startTime) && !isInProgress(m)) continue;
+      if (!isUpcoming(m.startTime) && !isInProgress(m)) continue;
       const key = formatDateKey(m.startTime);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(m);
     }
     return groups;
-  }, [filteredMatches, showPastFixtures]);
+  }, [filteredMatches]);
 
   // Results = completed matches only (descending date order — most recent first)
   const completedByDate = useMemo(() => {
@@ -234,10 +232,10 @@ export default function Home() {
   const upcomingCount = useMemo(() => {
     return filteredMatches.filter((m) => {
       if (m.matchStatus?.toUpperCase() === 'ENDED') return false;
-      if (!showPastFixtures && !isUpcoming(m.startTime) && !isInProgress(m)) return false;
+      if (!isUpcoming(m.startTime) && !isInProgress(m)) return false;
       return true;
     }).length;
-  }, [filteredMatches, showPastFixtures]);
+  }, [filteredMatches]);
   const completedCount = useMemo(
     () => filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED').length,
     [filteredMatches],
@@ -274,7 +272,7 @@ export default function Home() {
       ? filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED' || isInProgress(m))
       : filteredMatches.filter((m) => {
           if (m.matchStatus?.toUpperCase() === 'ENDED') return false;
-          if (!showPastFixtures && !isUpcoming(m.startTime)) return false;
+          if (!isUpcoming(m.startTime) && !isInProgress(m)) return false;
           return true;
         });
 
@@ -315,7 +313,7 @@ export default function Home() {
       ? filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED' || isInProgress(m))
       : filteredMatches.filter((m) => {
           if (m.matchStatus?.toUpperCase() === 'ENDED') return false;
-          if (!showPastFixtures && !isUpcoming(m.startTime)) return false;
+          if (!isUpcoming(m.startTime) && !isInProgress(m)) return false;
           return true;
         });
 
@@ -532,19 +530,6 @@ export default function Home() {
                     </button>
                   );
                 })}
-                {tab === 'fixtures' && (
-                  <button
-                    onClick={() => setShowPastFixtures((v) => !v)}
-                    type="button"
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors
-                      ${showPastFixtures
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                  >
-                    Show past
-                  </button>
-                )}
               </div>
               {hasActiveFilters && (
                 <button

@@ -814,6 +814,7 @@ export default function Home() {
             )}
             {statsData && (
               <StatsView
+                key={statsCategory}
                 data={statsData}
                 category={statsCategory}
                 selectedCompetitions={filters.competitions}

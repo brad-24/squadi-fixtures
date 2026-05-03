@@ -64,7 +64,7 @@ export default function StatsView({ data, category, selectedCompetitions, select
         <tbody>
           {entries.map((entry, idx) => (
             <tr
-              key={`${entry.playerName}-${entry.teamId}`}
+              key={`${category}-${entry.playerName}-${entry.teamId}`}
               className={`border-b border-gray-50 last:border-0 ${idx % 2 === 0 ? '' : 'bg-gray-50/40'}`}
             >
               <td className="px-3 py-2.5 text-xs text-gray-400 font-medium">{idx + 1}</td>

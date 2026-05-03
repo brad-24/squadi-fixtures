@@ -110,6 +110,7 @@ export function getStatusLabel(status: string | null, startTime?: string): strin
     case 'ENDED': return 'Final';
     case 'STARTED': return 'Live';
     case 'PAUSED': return 'Paused';
+    case 'POSTPONED': return 'Postponed';
     default: return status;
   }
 }
@@ -124,6 +125,7 @@ export function getStatusClasses(status: string | null, startTime?: string): str
   switch (status.toUpperCase()) {
     case 'ENDED': return 'bg-gray-100 text-gray-600';
     case 'STARTED': return 'bg-green-100 text-green-700 animate-pulse';
+    case 'POSTPONED': return 'bg-yellow-100 text-yellow-700';
     default: return 'bg-blue-100 text-blue-700';
   }
 }

@@ -128,6 +128,19 @@ export interface StatsData {
 
 // ── Filters ───────────────────────────────────────────────────────────────────
 
+// ── Match Events ─────────────────────────────────────────────────────────────
+
+export interface MatchEvent {
+  id: number;
+  type: string;
+  eventTimestamp: string;
+  teamId: number;
+  firstName: string | null;
+  lastName: string | null;
+  shirt: string | null;
+  isHidden: number;
+}
+
 export interface ActiveFilters {
   competitions: string[];
   ageGroups: string[];

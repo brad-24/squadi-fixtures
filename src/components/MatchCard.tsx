@@ -1,4 +1,7 @@
-import type { Match } from '@/types';
+'use client';
+
+import { useEffect, useState } from 'react';
+import type { Match, MatchEvent } from '@/types';
 import {
   formatMatchTime,
   getStatusLabel,
@@ -8,6 +11,7 @@ import Image from 'next/image';
 
 interface Props {
   match: Match;
+  showEvents?: boolean;
 }
 
 function TeamLogo({ team }: { team: Match['team1'] }) {
@@ -31,7 +35,54 @@ function TeamLogo({ team }: { team: Match['team1'] }) {
   );
 }
 
-export default function MatchCard({ match }: Props) {
+function GoalIcon() {
+  return (
+    <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 2a10 10 0 0 1 0 20A10 10 0 0 1 12 2z" />
+      <path d="M12 7l2.5 3.5H17l-2 3-1 3-2-2-2 2-1-3-2-3h2.5z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function YellowCardIcon() {
+  return (
+    <svg className="w-3 h-4 flex-shrink-0" viewBox="0 0 12 16" fill="#f59e0b">
+      <rect x="0" y="0" width="12" height="16" rx="2" />
+    </svg>
+  );
+}
+
+function RedCardIcon() {
+  return (
+    <svg className="w-3 h-4 flex-shrink-0" viewBox="0 0 12 16" fill="#ef4444">
+      <rect x="0" y="0" width="12" height="16" rx="2" />
+    </svg>
+  );
+}
+
+function getEventKind(type: string): 'goal' | 'yellow' | 'red' | null {
+  if (type === 'G' || type === 'PG' || type === 'OG') return 'goal';
+  if (type.startsWith('Y')) return 'yellow';
+  if (type.startsWith('R')) return 'red';
+  return null;
+}
+
+function getGameMinute(eventTimestamp: string, matchStartTime: string): number {
+  const elapsed = Math.round(
+    (new Date(eventTimestamp).getTime() - new Date(matchStartTime).getTime()) / 60000,
+  );
+  return Math.max(1, elapsed);
+}
+
+interface DisplayEvent {
+  id: number;
+  kind: 'goal' | 'yellow' | 'red';
+  minute: number;
+  playerName: string;
+}
+
+export default function MatchCard({ match, showEvents = false }: Props) {
   const isEnded = match.matchStatus?.toUpperCase() === 'ENDED';
   const LIVE_WINDOW_MS = 100 * 60 * 1000;
   const elapsed = Date.now() - new Date(match.startTime).getTime();
@@ -46,6 +97,35 @@ export default function MatchCard({ match }: Props) {
   const homeWins = isEnded && match.team1ResultId === 1;
   const awayWins = isEnded && match.team2ResultId === 1;
   const hasScores = match.team1Score !== null || match.team2Score !== null;
+
+  const [homeEvents, setHomeEvents] = useState<DisplayEvent[]>([]);
+  const [awayEvents, setAwayEvents] = useState<DisplayEvent[]>([]);
+
+  useEffect(() => {
+    if (!showEvents) return;
+    fetch(`/api/match-events?matchId=${match.id}`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((raw: MatchEvent[]) => {
+        const home: DisplayEvent[] = [];
+        const away: DisplayEvent[] = [];
+        for (const e of raw) {
+          const kind = getEventKind(e.type);
+          if (!kind) continue;
+          const playerName = [e.firstName, e.lastName].filter(Boolean).join(' ') || `#${e.shirt}`;
+          const minute = getGameMinute(e.eventTimestamp, match.startTime);
+          const entry = { id: e.id, kind, minute, playerName };
+          if (e.teamId === match.team1.id) home.push(entry);
+          else away.push(entry);
+        }
+        home.sort((a, b) => a.minute - b.minute);
+        away.sort((a, b) => a.minute - b.minute);
+        setHomeEvents(home);
+        setAwayEvents(away);
+      })
+      .catch(() => {});
+  }, [match.id, match.startTime, match.team1.id, showEvents]);
+
+  const hasEvents = homeEvents.length > 0 || awayEvents.length > 0;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
@@ -103,6 +183,39 @@ export default function MatchCard({ match }: Props) {
           <TeamLogo team={match.team2} />
         </div>
       </div>
+
+      {/* Events */}
+      {showEvents && hasEvents && (
+        <div className="px-3 pb-2.5 pt-0 flex gap-3 border-t border-gray-50">
+          {/* Home events */}
+          <div className="flex-1 flex flex-col gap-1 pt-2">
+            {homeEvents.map((e) => (
+              <div key={e.id} className="flex items-center gap-1">
+                {e.kind === 'goal' && <GoalIcon />}
+                {e.kind === 'yellow' && <YellowCardIcon />}
+                {e.kind === 'red' && <RedCardIcon />}
+                <span className="text-xs text-gray-500 leading-tight">
+                  {e.minute}' {e.playerName}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Away events */}
+          <div className="flex-1 flex flex-col gap-1 pt-2 items-end">
+            {awayEvents.map((e) => (
+              <div key={e.id} className="flex items-center gap-1 justify-end">
+                <span className="text-xs text-gray-500 leading-tight text-right">
+                  {e.playerName} {e.minute}'
+                </span>
+                {e.kind === 'goal' && <GoalIcon />}
+                {e.kind === 'yellow' && <YellowCardIcon />}
+                {e.kind === 'red' && <RedCardIcon />}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Footer — venue */}
       {venue && (

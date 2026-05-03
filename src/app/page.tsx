@@ -768,7 +768,7 @@ export default function Home() {
                       <section key={dateKey}>
                         <DateDivider startTime={matches[0].startTime} />
                         <div className="space-y-2.5">
-                          {matches.map((m) => <MatchCard key={m.id} match={m} />)}
+                          {matches.map((m) => <MatchCard key={m.id} match={m} showEvents />)}
                         </div>
                       </section>
                     ))}

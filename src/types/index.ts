@@ -135,6 +135,7 @@ export interface MatchEvent {
   type: string;
   eventTimestamp: string;
   teamId: number;
+  period: number;
   firstName: string | null;
   lastName: string | null;
   shirt: string | null;

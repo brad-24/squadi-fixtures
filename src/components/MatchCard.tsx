@@ -68,11 +68,15 @@ function getEventKind(type: string): 'goal' | 'yellow' | 'red' | null {
   return null;
 }
 
-function getGameMinute(eventTimestamp: string, matchStartTime: string): number {
+const HALF_TIME_BREAK_MINS = 10;
+
+function getGameMinute(eventTimestamp: string, matchStartTime: string, period: number): number {
   const elapsed = Math.round(
     (new Date(eventTimestamp).getTime() - new Date(matchStartTime).getTime()) / 60000,
   );
-  return Math.max(1, elapsed);
+  // Subtract the half-time break for each period beyond the first
+  const breakAdjustment = (period - 1) * HALF_TIME_BREAK_MINS;
+  return Math.max(1, elapsed - breakAdjustment);
 }
 
 interface DisplayEvent {
@@ -118,7 +122,7 @@ export default function MatchCard({ match, showEvents = false }: Props) {
           const kind = getEventKind(e.type);
           if (!kind) continue;
           const playerName = [e.firstName, e.lastName].filter(Boolean).join(' ') || `#${e.shirt}`;
-          const minute = getGameMinute(e.eventTimestamp, match.startTime);
+          const minute = getGameMinute(e.eventTimestamp, match.startTime, e.period);
           const side = e.teamId === match.team1.id ? 'home' : 'away';
           rows.push({ id: e.id, kind, minute, playerName, side });
         }

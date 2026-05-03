@@ -161,7 +161,7 @@ export default function MatchCard({ match, showEvents = false }: Props) {
         {/* Home team */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <TeamLogo team={match.team1} />
-          <span className={`text-sm leading-tight truncate ${homeWins ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+          <span className={`text-sm leading-tight ${homeWins ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
             {match.team1.name}
           </span>
         </div>
@@ -185,7 +185,7 @@ export default function MatchCard({ match, showEvents = false }: Props) {
 
         {/* Away team */}
         <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-          <span className={`text-sm leading-tight truncate text-right ${awayWins ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+          <span className={`text-sm leading-tight text-right ${awayWins ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
             {match.team2.name}
           </span>
           <TeamLogo team={match.team2} />

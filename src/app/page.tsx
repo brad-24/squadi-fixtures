@@ -96,6 +96,7 @@ export default function Home() {
   const [ladderError, setLadderError] = useState<string | null>(null);
   const [filters, setFilters] = useState<ActiveFilters>(EMPTY_FILTERS);
   const [reloading, setReloading] = useState(false);
+  const [showPastFixtures, setShowPastFixtures] = useState(false);
   const [statsData, setStatsData] = useState<StatsData | null>(null);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [statsCategory, setStatsCategory] = useState<StatCategory>('goals');
@@ -207,13 +208,13 @@ export default function Home() {
     const groups = new Map<string, Match[]>();
     for (const m of filteredMatches) {
       if (m.matchStatus?.toUpperCase() === 'ENDED') continue;
-      if (!isUpcoming(m.startTime) && !isInProgress(m)) continue;
+      if (!isInProgress(m) && !isUpcoming(m.startTime) && !showPastFixtures) continue;
       const key = formatDateKey(m.startTime);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(m);
     }
     return groups;
-  }, [filteredMatches]);
+  }, [filteredMatches, showPastFixtures]);
 
   // Results = ended or past matches (descending date order — most recent first)
   const completedByDate = useMemo(() => {
@@ -231,10 +232,10 @@ export default function Home() {
   const upcomingCount = useMemo(() => {
     return filteredMatches.filter((m) => {
       if (m.matchStatus?.toUpperCase() === 'ENDED') return false;
-      if (!isUpcoming(m.startTime) && !isInProgress(m)) return false;
+      if (!isInProgress(m) && !isUpcoming(m.startTime) && !showPastFixtures) return false;
       return true;
     }).length;
-  }, [filteredMatches]);
+  }, [filteredMatches, showPastFixtures]);
   const completedCount = useMemo(
     () => filteredMatches.filter((m) => !isInProgress(m) && !isUpcoming(m.startTime)).length,
     [filteredMatches],
@@ -271,7 +272,7 @@ export default function Home() {
       ? filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED' || isInProgress(m))
       : filteredMatches.filter((m) => {
           if (m.matchStatus?.toUpperCase() === 'ENDED') return false;
-          if (!isUpcoming(m.startTime) && !isInProgress(m)) return false;
+          if (!isInProgress(m) && !isUpcoming(m.startTime) && !showPastFixtures) return false;
           return true;
         });
 
@@ -312,7 +313,7 @@ export default function Home() {
       ? filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED' || isInProgress(m))
       : filteredMatches.filter((m) => {
           if (m.matchStatus?.toUpperCase() === 'ENDED') return false;
-          if (!isUpcoming(m.startTime) && !isInProgress(m)) return false;
+          if (!isInProgress(m) && !isUpcoming(m.startTime) && !showPastFixtures) return false;
           return true;
         });
 
@@ -529,6 +530,19 @@ export default function Home() {
                     </button>
                   );
                 })}
+                {tab === 'fixtures' && (
+                  <button
+                    onClick={() => setShowPastFixtures((v) => !v)}
+                    type="button"
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors
+                      ${showPastFixtures
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                  >
+                    Show past
+                  </button>
+                )}
               </div>
               {hasActiveFilters && (
                 <button

@@ -121,7 +121,10 @@ export default function MatchCard({ match, showEvents = false }: Props) {
             : ([e.firstName, e.lastName].filter(Boolean).join(' ') || `#${e.shirt}`);
           const playerName = e.type === 'OG' ? `${rawName} (OG)` : rawName;
           const minute = getGameMinute(e.eventTimestamp, match.startTime, e.period);
-          const map = e.teamId === match.team1.id ? homeMap : awayMap;
+          const scoredForHome = e.type === 'OG'
+            ? e.teamId !== match.team1.id
+            : e.teamId === match.team1.id;
+          const map = scoredForHome ? homeMap : awayMap;
           const key = `${kind}:${playerName}`;
           if (map.has(key)) map.get(key)!.minutes.push(minute);
           else map.set(key, { key, kind, playerName, minutes: [minute] });

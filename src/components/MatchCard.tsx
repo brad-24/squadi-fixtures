@@ -54,8 +54,11 @@ function TeamRow({
 
 export default function MatchCard({ match }: Props) {
   const isEnded = match.matchStatus?.toUpperCase() === 'ENDED';
+  const LIVE_WINDOW_MS = 100 * 60 * 1000;
+  const elapsed = Date.now() - new Date(match.startTime).getTime();
   const isLive = match.matchStatus?.toUpperCase() === 'STARTED' ||
-    (!match.matchStatus && new Date(match.startTime) <= new Date());
+    match.matchStatus?.toUpperCase() === 'PAUSED' ||
+    (!match.matchStatus && elapsed >= 0 && elapsed < LIVE_WINDOW_MS);
   const statusLabel = getStatusLabel(match.matchStatus, match.startTime);
   const statusClasses = getStatusClasses(match.matchStatus, match.startTime);
   const venue = match.venueCourt?.venue;

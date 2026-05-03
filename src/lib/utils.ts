@@ -94,10 +94,17 @@ export function formatDateKey(utcString: string): string {
   return date.toLocaleDateString('en-CA', { timeZone: 'Australia/Brisbane' }); // YYYY-MM-DD
 }
 
+const LIVE_WINDOW_MS = 100 * 60 * 1000;
+
+function isWithinLiveWindow(startTime: string): boolean {
+  const elapsed = Date.now() - new Date(startTime).getTime();
+  return elapsed >= 0 && elapsed < LIVE_WINDOW_MS;
+}
+
 export function getStatusLabel(status: string | null, startTime?: string): string {
   if (!status) {
-    if (startTime && new Date(startTime) <= new Date()) return 'Live';
-    return 'Upcoming';
+    if (!startTime || new Date(startTime) > new Date()) return 'Upcoming';
+    return isWithinLiveWindow(startTime) ? 'Live' : 'Final';
   }
   switch (status.toUpperCase()) {
     case 'ENDED': return 'Final';
@@ -109,8 +116,10 @@ export function getStatusLabel(status: string | null, startTime?: string): strin
 
 export function getStatusClasses(status: string | null, startTime?: string): string {
   if (!status) {
-    if (startTime && new Date(startTime) <= new Date()) return 'bg-green-100 text-green-700 animate-pulse';
-    return 'bg-blue-100 text-blue-700';
+    if (!startTime || new Date(startTime) > new Date()) return 'bg-blue-100 text-blue-700';
+    return isWithinLiveWindow(startTime)
+      ? 'bg-green-100 text-green-700 animate-pulse'
+      : 'bg-gray-100 text-gray-600';
   }
   switch (status.toUpperCase()) {
     case 'ENDED': return 'bg-gray-100 text-gray-600';

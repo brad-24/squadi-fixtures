@@ -124,7 +124,9 @@ export default function MatchCard({ match, showEvents = false }: Props) {
           else map.set(key, { key, kind, playerName, minutes: [minute] });
         }
         const sort = (m: Map<string, GroupedEvent>) =>
-          [...m.values()].sort((a, b) => a.minutes[0] - b.minutes[0]);
+          [...m.values()]
+            .map(e => ({ ...e, minutes: [...e.minutes].sort((a, b) => a - b) }))
+            .sort((a, b) => a.minutes[0] - b.minutes[0]);
         setHomeEvents(sort(homeMap));
         setAwayEvents(sort(awayMap));
       })

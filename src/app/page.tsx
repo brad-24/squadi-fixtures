@@ -67,9 +67,7 @@ function isUpcoming(startTime: string): boolean {
 
 function isInProgress(m: Match): boolean {
   const s = m.matchStatus?.toUpperCase();
-  if (s === 'ENDED') return false;
-  if (s === 'STARTED' || s === 'PAUSED') return true;
-  return !isUpcoming(m.startTime);
+  return s === 'STARTED' || s === 'PAUSED';
 }
 
 function isPresetActive(filters: ActiveFilters, days: number, direction: 'future' | 'past'): boolean {
@@ -217,11 +215,12 @@ export default function Home() {
     return groups;
   }, [filteredMatches]);
 
-  // Results = completed matches only (descending date order — most recent first)
+  // Results = ended or past matches (descending date order — most recent first)
   const completedByDate = useMemo(() => {
     const groups = new Map<string, Match[]>();
     for (const m of filteredMatches) {
-      if (m.matchStatus?.toUpperCase() !== 'ENDED') continue;
+      if (isInProgress(m)) continue;
+      if (isUpcoming(m.startTime)) continue;
       const key = formatDateKey(m.startTime);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(m);
@@ -237,7 +236,7 @@ export default function Home() {
     }).length;
   }, [filteredMatches]);
   const completedCount = useMemo(
-    () => filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED').length,
+    () => filteredMatches.filter((m) => !isInProgress(m) && !isUpcoming(m.startTime)).length,
     [filteredMatches],
   );
 

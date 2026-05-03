@@ -65,6 +65,11 @@ function isUpcoming(startTime: string): boolean {
   return new Date(startTime) > new Date();
 }
 
+function isInProgress(m: Match): boolean {
+  const s = m.matchStatus?.toUpperCase();
+  return s === 'STARTED' || s === 'PAUSED';
+}
+
 function isPresetActive(filters: ActiveFilters, days: number, direction: 'future' | 'past'): boolean {
   const from = direction === 'future' ? todayStr() : subtractDays(new Date(), days);
   const to = direction === 'future' ? addDays(new Date(), days) : todayStr();
@@ -204,6 +209,7 @@ export default function Home() {
     const groups = new Map<string, Match[]>();
     for (const m of filteredMatches) {
       if (m.matchStatus?.toUpperCase() === 'ENDED') continue;
+      if (isInProgress(m)) continue;
       if (!showPastFixtures && !isUpcoming(m.startTime)) continue;
       const key = formatDateKey(m.startTime);
       if (!groups.has(key)) groups.set(key, []);
@@ -212,11 +218,11 @@ export default function Home() {
     return groups;
   }, [filteredMatches, showPastFixtures]);
 
-  // Results = completed matches (descending date order — most recent first)
+  // Results = completed or in-progress matches (descending date order — most recent first)
   const completedByDate = useMemo(() => {
     const groups = new Map<string, Match[]>();
     for (const m of filteredMatches) {
-      if (m.matchStatus?.toUpperCase() !== 'ENDED') continue;
+      if (m.matchStatus?.toUpperCase() !== 'ENDED' && !isInProgress(m)) continue;
       const key = formatDateKey(m.startTime);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(m);
@@ -227,12 +233,13 @@ export default function Home() {
   const upcomingCount = useMemo(() => {
     return filteredMatches.filter((m) => {
       if (m.matchStatus?.toUpperCase() === 'ENDED') return false;
+      if (isInProgress(m)) return false;
       if (!showPastFixtures && !isUpcoming(m.startTime)) return false;
       return true;
     }).length;
   }, [filteredMatches, showPastFixtures]);
   const completedCount = useMemo(
-    () => filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED').length,
+    () => filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED' || isInProgress(m)).length,
     [filteredMatches],
   );
 
@@ -264,7 +271,7 @@ export default function Home() {
 
   function exportToCSV() {
     const matches = tab === 'results'
-      ? filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED')
+      ? filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED' || isInProgress(m))
       : filteredMatches.filter((m) => {
           if (m.matchStatus?.toUpperCase() === 'ENDED') return false;
           if (!showPastFixtures && !isUpcoming(m.startTime)) return false;
@@ -305,7 +312,7 @@ export default function Home() {
 
   function exportToICS() {
     const matches = tab === 'results'
-      ? filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED')
+      ? filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED' || isInProgress(m))
       : filteredMatches.filter((m) => {
           if (m.matchStatus?.toUpperCase() === 'ENDED') return false;
           if (!showPastFixtures && !isUpcoming(m.startTime)) return false;

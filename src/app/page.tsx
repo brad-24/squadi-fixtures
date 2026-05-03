@@ -65,9 +65,14 @@ function isUpcoming(startTime: string): boolean {
   return new Date(startTime) > new Date();
 }
 
+const LIVE_WINDOW_MS = 100 * 60 * 1000;
+
 function isInProgress(m: Match): boolean {
   const s = m.matchStatus?.toUpperCase();
-  return s === 'STARTED' || s === 'PAUSED';
+  if (s === 'STARTED' || s === 'PAUSED') return true;
+  if (s === 'ENDED') return false;
+  const elapsed = Date.now() - new Date(m.startTime).getTime();
+  return elapsed >= 0 && elapsed < LIVE_WINDOW_MS;
 }
 
 function isPresetActive(filters: ActiveFilters, days: number, direction: 'future' | 'past'): boolean {

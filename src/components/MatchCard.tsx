@@ -92,9 +92,10 @@ export default function MatchCard({ match, showEvents = false }: Props) {
   const venue = match.venueCourt?.venue;
   const court = match.venueCourt?.name;
 
+  const isUpcoming = !isEnded && !isLive;
   const homeWins = isEnded && match.team1ResultId === 1;
   const awayWins = isEnded && match.team2ResultId === 1;
-  const hasScores = match.team1Score !== null || match.team2Score !== null;
+  const hasScores = !isUpcoming && (match.team1Score !== null || match.team2Score !== null);
 
   interface GroupedEvent {
     key: string;
@@ -185,7 +186,7 @@ export default function MatchCard({ match, showEvents = false }: Props) {
               </span>
             </>
           ) : (
-            <span className="text-sm text-gray-400 font-medium px-1">vs</span>
+            <span className="text-base text-gray-400 font-medium">{isUpcoming ? '-' : 'vs'}</span>
           )}
         </div>
 

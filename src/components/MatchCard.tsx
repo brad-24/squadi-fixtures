@@ -37,10 +37,14 @@ function TeamLogo({ team }: { team: Match['team1'] }) {
 
 function GoalIcon() {
   return (
-    <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 2a10 10 0 0 1 0 20A10 10 0 0 1 12 2z" />
-      <path d="M12 7l2.5 3.5H17l-2 3-1 3-2-2-2 2-1-3-2-3h2.5z" strokeLinejoin="round" />
+    <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 20 20" fill="none">
+      <circle cx="10" cy="10" r="9" fill="white" stroke="#1f2937" strokeWidth="1.5"/>
+      <path fill="#1f2937" d="M10 3.5l2.2 1.6-.8 2.6H8.6L7.8 5.1z"/>
+      <path fill="#1f2937" d="M5.2 7.2l2.2-.6.8 2.6-2 1.5-2.2-.7z"/>
+      <path fill="#1f2937" d="M14.8 7.2l1.2 2.8-2.2.7-2-1.5.8-2.6z"/>
+      <path fill="#1f2937" d="M3.8 13.2l.8-2.5 2.2.7.5 2.6-1.8 1.3z"/>
+      <path fill="#1f2937" d="M16.2 13.2l-1.7 2.1-1.8-1.3.5-2.6 2.2-.7z"/>
+      <path fill="#1f2937" d="M10 16.5l-2-.8.5-2.6h3l.5 2.6z"/>
     </svg>
   );
 }
@@ -193,22 +197,27 @@ export default function MatchCard({ match, showEvents = false }: Props) {
 
       {/* Events */}
       {showEvents && hasEvents && (
-        <div className="px-3 pb-2.5 pt-2 flex flex-col gap-1 border-t border-gray-50">
-          {events.map((e) => (
-            <div key={e.id} className="flex items-center gap-2">
-              <span className="flex-1 text-xs text-gray-500 leading-tight text-right">
-                {e.side === 'home' ? `${e.playerName} ${e.minute}'` : ''}
-              </span>
-              <div className="flex-shrink-0 flex items-center justify-center w-5">
+        <div className="px-3 pb-2.5 pt-2 flex gap-2 border-t border-gray-50">
+          <div className="flex-1 flex flex-col gap-0.5 items-end">
+            {events.filter(e => e.side === 'home').map(e => (
+              <div key={e.id} className="flex items-center gap-1">
+                <span className="text-xs text-gray-500 leading-tight">{e.playerName} {e.minute}'</span>
                 {e.kind === 'goal' && <GoalIcon />}
                 {e.kind === 'yellow' && <YellowCardIcon />}
                 {e.kind === 'red' && <RedCardIcon />}
               </div>
-              <span className="flex-1 text-xs text-gray-500 leading-tight">
-                {e.side === 'away' ? `${e.minute}' ${e.playerName}` : ''}
-              </span>
-            </div>
-          ))}
+            ))}
+          </div>
+          <div className="flex-1 flex flex-col gap-0.5">
+            {events.filter(e => e.side === 'away').map(e => (
+              <div key={e.id} className="flex items-center gap-1">
+                {e.kind === 'goal' && <GoalIcon />}
+                {e.kind === 'yellow' && <YellowCardIcon />}
+                {e.kind === 'red' && <RedCardIcon />}
+                <span className="text-xs text-gray-500 leading-tight">{e.minute}' {e.playerName}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

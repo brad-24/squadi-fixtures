@@ -205,14 +205,13 @@ export default function Home() {
     });
   }, [fixtureData, filters]);
 
-  // Upcoming = not yet played (ascending date order)
-  // When showPastFixtures is false, clamp to today onwards
+  // Upcoming = not yet ended, including live/in-progress (ascending date order)
+  // When showPastFixtures is false, clamp to today onwards (live games always shown)
   const upcomingByDate = useMemo(() => {
     const groups = new Map<string, Match[]>();
     for (const m of filteredMatches) {
       if (m.matchStatus?.toUpperCase() === 'ENDED') continue;
-      if (isInProgress(m)) continue;
-      if (!showPastFixtures && !isUpcoming(m.startTime)) continue;
+      if (!showPastFixtures && !isUpcoming(m.startTime) && !isInProgress(m)) continue;
       const key = formatDateKey(m.startTime);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(m);
@@ -220,11 +219,11 @@ export default function Home() {
     return groups;
   }, [filteredMatches, showPastFixtures]);
 
-  // Results = completed or in-progress matches (descending date order — most recent first)
+  // Results = completed matches only (descending date order — most recent first)
   const completedByDate = useMemo(() => {
     const groups = new Map<string, Match[]>();
     for (const m of filteredMatches) {
-      if (m.matchStatus?.toUpperCase() !== 'ENDED' && !isInProgress(m)) continue;
+      if (m.matchStatus?.toUpperCase() !== 'ENDED') continue;
       const key = formatDateKey(m.startTime);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(m);
@@ -235,13 +234,12 @@ export default function Home() {
   const upcomingCount = useMemo(() => {
     return filteredMatches.filter((m) => {
       if (m.matchStatus?.toUpperCase() === 'ENDED') return false;
-      if (isInProgress(m)) return false;
-      if (!showPastFixtures && !isUpcoming(m.startTime)) return false;
+      if (!showPastFixtures && !isUpcoming(m.startTime) && !isInProgress(m)) return false;
       return true;
     }).length;
   }, [filteredMatches, showPastFixtures]);
   const completedCount = useMemo(
-    () => filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED' || isInProgress(m)).length,
+    () => filteredMatches.filter((m) => m.matchStatus?.toUpperCase() === 'ENDED').length,
     [filteredMatches],
   );
 

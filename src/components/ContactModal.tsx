@@ -36,7 +36,7 @@ export default function ContactModal({ onClose }: Props) {
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">Report a Bug</h2>
+          <h2 className="font-semibold text-gray-900">Report a Bug or Provide Feedback</h2>
           <button
             onClick={onClose}
             type="button"
@@ -55,7 +55,7 @@ export default function ContactModal({ onClose }: Props) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <p className="font-medium text-gray-900">Thanks for the report!</p>
+            <p className="font-medium text-gray-900">Thanks for getting in touch!</p>
             <p className="text-sm text-gray-500">Your message has been sent.</p>
             <button
               onClick={onClose}
@@ -89,14 +89,14 @@ export default function ContactModal({ onClose }: Props) {
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-gray-600">
-                What&apos;s the issue? <span className="text-red-400">*</span>
+                Your message <span className="text-red-400">*</span>
               </label>
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 required
                 rows={4}
-                placeholder="Describe what happened and what you expected…"
+                placeholder="Report a bug or share your feedback…"
                 className="px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               />
             </div>

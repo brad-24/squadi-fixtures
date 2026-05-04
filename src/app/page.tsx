@@ -479,6 +479,14 @@ export default function Home() {
               />
               <h1 className="font-bold text-lg leading-tight">Football Queensland - Darling Downs - Season 2026</h1>
             </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowContact(true)}
+                className="text-xs text-zinc-400 hover:text-white transition-colors"
+              >
+                Contact
+              </button>
             <button
               onClick={handleReload}
               disabled={reloading}
@@ -496,6 +504,7 @@ export default function Home() {
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
+            </div>
           </div>
           <div className="flex gap-1">
             {tabConfig.map(({ id, label }) => (
@@ -917,16 +926,6 @@ export default function Home() {
           </>
         )}
       </main>
-
-      <footer className="mt-6 pb-6 text-center">
-        <button
-          type="button"
-          onClick={() => setShowContact(true)}
-          className="text-xs text-gray-400 hover:text-gray-600 transition-colors underline underline-offset-2"
-        >
-          Report a bug
-        </button>
-      </footer>
 
       {showContact && <ContactModal onClose={() => setShowContact(false)} />}
     </div>

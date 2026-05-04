@@ -466,11 +466,11 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50">
       {/* Disclaimer banner */}
       <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-center text-xs text-yellow-800">
-        This is not an official Football Queensland page. Always check{' '}
-        <a href="https://app.squadi.com" target="_blank" rel="noopener noreferrer" className="underline font-medium">
-          Squadi
+        This is not an official Football Queensland page. For accurate data, visit the{' '}
+        <a href="https://registration.squadi.com/liveScoreSeasonFixture" target="_blank" rel="noopener noreferrer" className="underline font-medium">
+          Squadi website
         </a>{' '}
-        for the most accurate and up-to-date information.
+        or use the Squadi mobile app.
       </div>
 
       {/* Sticky header + tabs */}

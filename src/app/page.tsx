@@ -8,6 +8,7 @@ import MultiSelect from '@/components/MultiSelect';
 import MatchCard from '@/components/MatchCard';
 import LadderView from '@/components/LadderView';
 import StatsView from '@/components/StatsView';
+import ContactModal from '@/components/ContactModal';
 
 type Tab = 'fixtures' | 'results' | 'ladder' | 'statistics';
 
@@ -155,6 +156,7 @@ export default function Home() {
   const [statsError, setStatsError] = useState<string | null>(null);
   const [statsCategory, setStatsCategory] = useState<StatCategory>('goals');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [showContact, setShowContact] = useState(false);
 
   useEffect(() => {
     fetch('/api/fixtures')
@@ -915,6 +917,18 @@ export default function Home() {
           </>
         )}
       </main>
+
+      <footer className="mt-6 pb-6 text-center">
+        <button
+          type="button"
+          onClick={() => setShowContact(true)}
+          className="text-xs text-gray-400 hover:text-gray-600 transition-colors underline underline-offset-2"
+        >
+          Report a bug
+        </button>
+      </footer>
+
+      {showContact && <ContactModal onClose={() => setShowContact(false)} />}
     </div>
   );
 }

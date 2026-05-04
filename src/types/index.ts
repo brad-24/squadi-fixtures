@@ -126,6 +126,20 @@ export interface StatsData {
   redCards: PlayerStatEntry[];
 }
 
+// ── Appointments ─────────────────────────────────────────────────────────────
+
+export interface Appointment {
+  date: string;         // YYYY-MM-DD (AEST)
+  time: string;         // HH:mm (AEST)
+  competition: string;
+  home: string;
+  away: string;
+  venue: string;
+  referee: string | null;
+  ar1: string | null;
+  ar2: string | null;
+}
+
 // ── Filters ───────────────────────────────────────────────────────────────────
 
 // ── Match Events ─────────────────────────────────────────────────────────────

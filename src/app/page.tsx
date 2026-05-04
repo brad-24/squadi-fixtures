@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, type ReactNode } from 'react';
 import Image from 'next/image';
-import type { FixtureData, LadderData, ActiveFilters, Match, StatsData, StatCategory } from '@/types';
+import type { FixtureData, LadderData, ActiveFilters, Match, StatsData, StatCategory, Appointment } from '@/types';
 import { formatMatchDate, formatDateKey, formatMatchTime, getStatusLabel } from '@/lib/utils';
 import MultiSelect from '@/components/MultiSelect';
 import MatchCard from '@/components/MatchCard';
@@ -81,6 +81,55 @@ function isPresetActive(filters: ActiveFilters, days: number, direction: 'future
   return filters.dateFrom === from && filters.dateTo === to;
 }
 
+// Brisbane is always UTC+10 (no DST)
+function toAEST(utcString: string): { date: string; time: string } {
+  const ms = new Date(utcString).getTime() + 10 * 60 * 60 * 1000;
+  const d = new Date(ms);
+  const date = d.toISOString().slice(0, 10);
+  const time = `${d.getUTCHours().toString().padStart(2, '0')}:${d.getUTCMinutes().toString().padStart(2, '0')}`;
+  return { date, time };
+}
+
+const STOPWORDS = new Set([
+  'fc', 'sc', 'afc', 'men', 'women', 'girls', 'boys', 'mixed',
+  'senior', 'seniors', 'junior', 'juniors', 'div', 'division',
+  'fqpl', 'jl', 'round', 'under', 'the',
+]);
+
+function tokenize(name: string): Set<string> {
+  return new Set(
+    name
+      .toLowerCase()
+      .split(/[\s/\-–]+/)
+      .map((t) => t.replace(/[^a-z0-9]/g, ''))
+      .filter((t) => t.length > 1 && !STOPWORDS.has(t) && !/^\d+$/.test(t)),
+  );
+}
+
+function teamMatches(apptName: string, squadiName: string): boolean {
+  const apptTokens = tokenize(apptName);
+  const squadiTokens = tokenize(squadiName);
+  if (squadiTokens.size === 0) return false;
+  for (const t of squadiTokens) {
+    if (!apptTokens.has(t)) return false;
+  }
+  return true;
+}
+
+function findAppointment(
+  match: Match,
+  index: Map<string, Appointment[]>,
+): Appointment | undefined {
+  const { date, time } = toAEST(match.startTime);
+  const candidates = index.get(`${date}|${time}`);
+  if (!candidates?.length) return undefined;
+  return candidates.find(
+    (a) =>
+      (teamMatches(a.home, match.team1.name) && teamMatches(a.away, match.team2.name)) ||
+      (teamMatches(a.home, match.team2.name) && teamMatches(a.away, match.team1.name)),
+  );
+}
+
 function DateDivider({ startTime }: { startTime: string }) {
   return (
     <div className="flex items-center gap-3 mb-3">
@@ -105,6 +154,7 @@ export default function Home() {
   const [statsData, setStatsData] = useState<StatsData | null>(null);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [statsCategory, setStatsCategory] = useState<StatCategory>('goals');
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
 
   useEffect(() => {
     fetch('/api/fixtures')
@@ -119,6 +169,10 @@ export default function Home() {
       .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
       .then(setStatsData)
       .catch((e) => setStatsError(e.message));
+    fetch('/api/appointments')
+      .then((r) => r.ok ? r.json() : [])
+      .then(setAppointments)
+      .catch(() => {});
   }, []);
 
   async function handleReload() {
@@ -127,10 +181,11 @@ export default function Home() {
     setLadderError(null);
     setStatsError(null);
     try {
-      const [fRes, lRes, sRes] = await Promise.all([
+      const [fRes, lRes, sRes, aRes] = await Promise.all([
         fetch('/api/fixtures?force=1', { cache: 'no-store' }),
         fetch('/api/ladder?force=1', { cache: 'no-store' }),
         fetch('/api/stats?force=1', { cache: 'no-store' }),
+        fetch('/api/appointments?force=1', { cache: 'no-store' }),
       ]);
       if (fRes.ok) setFixtureData(await fRes.json());
       else setFixtureError(String(fRes.status));
@@ -138,6 +193,7 @@ export default function Home() {
       else setLadderError(String(lRes.status));
       if (sRes.ok) setStatsData(await sRes.json());
       else setStatsError(String(sRes.status));
+      if (aRes.ok) setAppointments(await aRes.json());
     } catch { /* keep existing data visible */ } finally {
       setReloading(false);
     }
@@ -254,6 +310,22 @@ export default function Home() {
     filters.teams.length > 0 ||
     !!filters.dateFrom ||
     !!filters.dateTo;
+
+  const appointmentByMatchId = useMemo(() => {
+    const map = new Map<number, Appointment>();
+    if (!fixtureData || !appointments.length) return map;
+    const index = new Map<string, Appointment[]>();
+    for (const a of appointments) {
+      const key = `${a.date}|${a.time}`;
+      if (!index.has(key)) index.set(key, []);
+      index.get(key)!.push(a);
+    }
+    for (const m of fixtureData.allMatches) {
+      const appt = findAppointment(m, index);
+      if (appt) map.set(m.id, appt);
+    }
+    return map;
+  }, [fixtureData, appointments]);
 
   function clearFilters() { setFilters(EMPTY_FILTERS); }
 
@@ -695,7 +767,7 @@ export default function Home() {
                       <section key={dateKey}>
                         <DateDivider startTime={matches[0].startTime} />
                         <div className="space-y-2.5">
-                          {matches.map((m) => <MatchCard key={m.id} match={m} />)}
+                          {matches.map((m) => <MatchCard key={m.id} match={m} appointment={appointmentByMatchId.get(m.id)} />)}
                         </div>
                       </section>
                     ))}
@@ -773,7 +845,7 @@ export default function Home() {
                       <section key={dateKey}>
                         <DateDivider startTime={matches[0].startTime} />
                         <div className="space-y-2.5">
-                          {matches.map((m) => <MatchCard key={m.id} match={m} showEvents />)}
+                          {matches.map((m) => <MatchCard key={m.id} match={m} showEvents appointment={appointmentByMatchId.get(m.id)} />)}
                         </div>
                       </section>
                     ))}

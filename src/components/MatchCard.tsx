@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { Match, MatchEvent } from '@/types';
+import type { Match, MatchEvent, Appointment } from '@/types';
 import {
   formatMatchTime,
   getStatusLabel,
@@ -12,6 +12,7 @@ import Image from 'next/image';
 interface Props {
   match: Match;
   showEvents?: boolean;
+  appointment?: Appointment;
 }
 
 function TeamLogo({ team }: { team: Match['team1'] }) {
@@ -80,7 +81,22 @@ interface DisplayEvent {
   playerName: string;
 }
 
-export default function MatchCard({ match, showEvents = false }: Props) {
+function OfficialBadge({ role, value }: { role: string; value: string | null }) {
+  const assigned = value !== null;
+  const label = assigned && value !== 'FQ Referee' ? value : role;
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded ${
+        assigned ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-400'
+      }`}
+    >
+      {label}
+      <span className="opacity-70">{assigned ? '✓' : '–'}</span>
+    </span>
+  );
+}
+
+export default function MatchCard({ match, showEvents = false, appointment }: Props) {
   const isEnded = match.matchStatus?.toUpperCase() === 'ENDED';
   const LIVE_WINDOW_MS = 100 * 60 * 1000;
   const elapsed = Date.now() - new Date(match.startTime).getTime();
@@ -230,6 +246,20 @@ export default function MatchCard({ match, showEvents = false }: Props) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Officials */}
+      {appointment && (
+        <div className="px-3 py-1.5 border-t border-gray-100 flex items-center gap-2">
+          <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide flex-shrink-0">
+            Officials
+          </span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <OfficialBadge role="REF" value={appointment.referee} />
+            <OfficialBadge role="AR1" value={appointment.ar1} />
+            <OfficialBadge role="AR2" value={appointment.ar2} />
+          </div>
         </div>
       )}
 

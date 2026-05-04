@@ -464,6 +464,15 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Disclaimer banner */}
+      <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-center text-xs text-yellow-800">
+        This is not an official Football Queensland page. Always check{' '}
+        <a href="https://app.squadi.com" target="_blank" rel="noopener noreferrer" className="underline font-medium">
+          Squadi
+        </a>{' '}
+        for the most accurate and up-to-date information.
+      </div>
+
       {/* Sticky header + tabs */}
       <header className="bg-brand-800 text-white shadow-lg sticky top-0 z-40">
         <div className="max-w-3xl mx-auto px-4 pt-3 pb-0">

@@ -356,21 +356,28 @@ export default function Home() {
     const headers = [
       'Date', 'Time', 'Competition', 'Age Group', 'Round', 'Division',
       'Team 1', 'Score 1', 'Score 2', 'Team 2', 'Venue', 'Status',
+      'Referee', 'AR1', 'AR2',
     ];
-    const rows = matches.map((m) => [
-      formatDateKey(m.startTime),
-      formatMatchTime(m.startTime),
-      m.competitionName,
-      m.ageGroup,
-      m.round.name,
-      m.divisionName,
-      m.team1.name,
-      m.team1Score ?? '',
-      m.team2Score ?? '',
-      m.team2.name,
-      [m.venueCourt?.venue?.name, m.venueCourt?.name].filter(Boolean).join(' · '),
-      getStatusLabel(m.matchStatus),
-    ]);
+    const rows = matches.map((m) => {
+      const appt = appointmentByMatchId.get(m.id);
+      return [
+        formatDateKey(m.startTime),
+        formatMatchTime(m.startTime),
+        m.competitionName,
+        m.ageGroup,
+        m.round.name,
+        m.divisionName,
+        m.team1.name,
+        m.team1Score ?? '',
+        m.team2Score ?? '',
+        m.team2.name,
+        [m.venueCourt?.venue?.name, m.venueCourt?.name].filter(Boolean).join(' · '),
+        getStatusLabel(m.matchStatus),
+        appt?.referee ?? '',
+        appt?.ar1 ?? '',
+        appt?.ar2 ?? '',
+      ];
+    });
 
     const csv = [headers, ...rows]
       .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))

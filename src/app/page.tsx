@@ -469,8 +469,7 @@ export default function Home() {
         This is not an official Football Queensland page. Data is sourced from the{' '}
         <a href="https://registration.squadi.com/liveScoreSeasonFixture" target="_blank" rel="noopener noreferrer" className="underline font-medium">
           Squadi website
-        </a>{' '}
-        and Squadi mobile app.
+        </a>.
       </div>
 
       {/* Sticky header + tabs */}

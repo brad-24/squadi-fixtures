@@ -44,21 +44,28 @@ export async function GET(request: Request) {
       const entries: LadderEntry[] = (data.ladders ?? [])
         .filter((e: { isHidden: string }) => e.isHidden !== '1')
         .sort((a: { rk: string }, b: { rk: string }) => Number(a.rk) - Number(b.rk))
-        .map((e: LadderEntry) => ({
-          id: e.id,
-          name: e.name,
-          alias: e.alias,
-          logoUrl: e.logoUrl,
-          rk: e.rk,
-          P: e.P,
-          W: e.W,
-          D: e.D,
-          L: e.L,
-          F: e.F,
-          A: e.A,
-          PTS: e.PTS,
-          goalDifference: e.goalDifference,
-        }));
+        .map((e: LadderEntry & { PTS: string; W: string; D: string }) => {
+          // Squadi counts forfeit wins toward PTS but not W — infer from surplus points
+          const pts = parseInt(e.PTS, 10);
+          const w = parseInt(e.W, 10);
+          const d = parseInt(e.D, 10);
+          const forfeitWins = Math.max(0, Math.floor((pts - w * 3 - d) / 3));
+          return {
+            id: e.id,
+            name: e.name,
+            alias: e.alias,
+            logoUrl: e.logoUrl,
+            rk: e.rk,
+            P: e.P,
+            W: forfeitWins > 0 ? String(w + forfeitWins) : e.W,
+            D: e.D,
+            L: e.L,
+            F: e.F,
+            A: e.A,
+            PTS: e.PTS,
+            goalDifference: e.goalDifference,
+          };
+        });
 
       if (entries.length === 0) continue;
 

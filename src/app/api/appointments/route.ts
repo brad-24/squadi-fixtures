@@ -38,9 +38,13 @@ export async function GET(request: Request) {
       ...(force ? { cache: 'no-store' } : { next: { revalidate: 300 } }),
     });
 
-    if (!res.ok) return NextResponse.json([]);
+    if (!res.ok) {
+      console.error('Appointments upstream error:', res.status, await res.text().catch(() => ''));
+      return NextResponse.json([]);
+    }
 
     const json = await res.json();
+    console.log('Appointments response keys:', Object.keys(json), 'data type:', typeof json.data, 'data isArray:', Array.isArray(json.data), 'data length:', Array.isArray(json.data) ? json.data.length : 'N/A');
     const items: { matchId: number; umpires: { sequence: number; status: string }[] }[] =
       Array.isArray(json.data) ? json.data : [];
 

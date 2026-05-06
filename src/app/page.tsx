@@ -471,7 +471,7 @@ export default function Home() {
           Squadi
         </a>{' '}
         and{' '}
-        <a href="https://footballqueensland.com.au/Resources/darling-downs-appointments/" target="_blank" rel="noopener noreferrer" className="underline font-medium">
+        <a href="https://registration.squadi.com/officialAppointments?organisationKey=74f39f3a-6e73-48a8-b837-705aba4c4512&competitionUniqueKey=8671e1f4-b6ae-4062-88cc-b759d8b1902e&yearId=8&divisionId=All" target="_blank" rel="noopener noreferrer" className="underline font-medium">
           Ref Appointments
         </a>{' '}
         websites.

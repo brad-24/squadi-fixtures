@@ -83,7 +83,7 @@ interface DisplayEvent {
 
 function OfficialBadge({ role, value }: { role: string; value: string | null }) {
   const assigned = value !== null;
-  const label = assigned && value !== 'FQ Referee' ? value : role;
+  const label = role === 'REF' ? 'Ref' : role;
   return (
     <span
       className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded ${
@@ -91,7 +91,7 @@ function OfficialBadge({ role, value }: { role: string; value: string | null }) 
       }`}
     >
       {label}
-      <span className="opacity-70">{assigned ? '✓' : '–'}</span>
+      {assigned && <span className="opacity-70">✓</span>}
     </span>
   );
 }

@@ -129,15 +129,10 @@ export interface StatsData {
 // ── Appointments ─────────────────────────────────────────────────────────────
 
 export interface Appointment {
-  date: string;         // YYYY-MM-DD (AEST)
-  time: string;         // HH:mm (AEST)
-  competition: string;
-  home: string;
-  away: string;
-  venue: string;
-  referee: string | null;
-  ar1: string | null;
-  ar2: string | null;
+  matchId: number;
+  ref: boolean;
+  ar1: boolean;
+  ar2: boolean;
 }
 
 // ── Filters ───────────────────────────────────────────────────────────────────

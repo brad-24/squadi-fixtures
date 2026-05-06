@@ -81,9 +81,7 @@ interface DisplayEvent {
   playerName: string;
 }
 
-function OfficialBadge({ role, value }: { role: string; value: string | null }) {
-  const assigned = value !== null;
-  const label = role === 'REF' ? 'Ref' : role;
+function OfficialBadge({ label, assigned }: { label: string; assigned: boolean }) {
   return (
     <span
       className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded ${
@@ -256,9 +254,9 @@ export default function MatchCard({ match, showEvents = false, appointment }: Pr
             Officials
           </span>
           <div className="flex items-center gap-1.5 flex-wrap">
-            <OfficialBadge role="REF" value={appointment.referee} />
-            <OfficialBadge role="AR1" value={appointment.ar1} />
-            <OfficialBadge role="AR2" value={appointment.ar2} />
+            <OfficialBadge label="Ref" assigned={appointment.ref} />
+            <OfficialBadge label="AR1" assigned={appointment.ar1} />
+            <OfficialBadge label="AR2" assigned={appointment.ar2} />
           </div>
         </div>
       )}

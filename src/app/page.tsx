@@ -83,53 +83,6 @@ function isPresetActive(filters: ActiveFilters, days: number, direction: 'future
 }
 
 // Brisbane is always UTC+10 (no DST)
-function toAEST(utcString: string): { date: string; time: string } {
-  const ms = new Date(utcString).getTime() + 10 * 60 * 60 * 1000;
-  const d = new Date(ms);
-  const date = d.toISOString().slice(0, 10);
-  const time = `${d.getUTCHours().toString().padStart(2, '0')}:${d.getUTCMinutes().toString().padStart(2, '0')}`;
-  return { date, time };
-}
-
-const STOPWORDS = new Set([
-  'fc', 'sc', 'afc', 'men', 'women', 'girls', 'boys', 'mixed',
-  'senior', 'seniors', 'junior', 'juniors', 'div', 'division',
-  'fqpl', 'jl', 'round', 'under', 'the',
-]);
-
-function tokenize(name: string): Set<string> {
-  return new Set(
-    name
-      .toLowerCase()
-      .split(/[\s/\-–]+/)
-      .map((t) => t.replace(/[^a-z0-9]/g, ''))
-      .filter((t) => t.length > 1 && !STOPWORDS.has(t) && !/^\d+$/.test(t)),
-  );
-}
-
-function teamMatches(apptName: string, squadiName: string): boolean {
-  const apptTokens = tokenize(apptName);
-  const squadiTokens = tokenize(squadiName);
-  if (squadiTokens.size === 0) return false;
-  for (const t of squadiTokens) {
-    if (!apptTokens.has(t)) return false;
-  }
-  return true;
-}
-
-function findAppointment(
-  match: Match,
-  index: Map<string, Appointment[]>,
-): Appointment | undefined {
-  const { date, time } = toAEST(match.startTime);
-  const candidates = index.get(`${date}|${time}`);
-  if (!candidates?.length) return undefined;
-  return candidates.find(
-    (a) =>
-      (teamMatches(a.home, match.team1.name) && teamMatches(a.away, match.team2.name)) ||
-      (teamMatches(a.home, match.team2.name) && teamMatches(a.away, match.team1.name)),
-  );
-}
 
 function DateDivider({ startTime }: { startTime: string }) {
   return (
@@ -315,19 +268,9 @@ export default function Home() {
 
   const appointmentByMatchId = useMemo(() => {
     const map = new Map<number, Appointment>();
-    if (!fixtureData || !appointments.length) return map;
-    const index = new Map<string, Appointment[]>();
-    for (const a of appointments) {
-      const key = `${a.date}|${a.time}`;
-      if (!index.has(key)) index.set(key, []);
-      index.get(key)!.push(a);
-    }
-    for (const m of fixtureData.allMatches) {
-      const appt = findAppointment(m, index);
-      if (appt) map.set(m.id, appt);
-    }
+    for (const a of appointments) map.set(a.matchId, a);
     return map;
-  }, [fixtureData, appointments]);
+  }, [appointments]);
 
   function clearFilters() { setFilters(EMPTY_FILTERS); }
 
@@ -375,9 +318,9 @@ export default function Home() {
         m.team2.name,
         [m.venueCourt?.venue?.name, m.venueCourt?.name].filter(Boolean).join(' · '),
         getStatusLabel(m.matchStatus),
-        appt?.referee ?? '',
-        appt?.ar1 ?? '',
-        appt?.ar2 ?? '',
+        appt?.ref ? 'Appointed' : '',
+        appt?.ar1 ? 'Appointed' : '',
+        appt?.ar2 ? 'Appointed' : '',
       ];
     });
 

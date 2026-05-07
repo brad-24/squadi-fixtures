@@ -28,23 +28,18 @@ function isAppointed(umpires: { sequence: number; status: string }[], seq: numbe
   return umpires.find((u) => u.sequence === seq)?.status === 'appointed';
 }
 
-export async function GET(request: Request) {
-  const force = new URL(request.url).searchParams.get('force') === '1';
+export async function GET(_request: Request) {
   try {
     const res = await fetch(APPOINTMENTS_URL, {
       method: 'POST',
       headers: COMMON_HEADERS,
       body: JSON.stringify(PAYLOAD),
-      ...(force ? { cache: 'no-store' } : { next: { revalidate: 300 } }),
+      cache: 'no-store',
     });
 
-    if (!res.ok) {
-      console.error('Appointments upstream error:', res.status, await res.text().catch(() => ''));
-      return NextResponse.json([]);
-    }
+    if (!res.ok) return NextResponse.json([]);
 
     const json = await res.json();
-    console.log('Appointments response keys:', Object.keys(json), 'data type:', typeof json.data, 'data isArray:', Array.isArray(json.data), 'data length:', Array.isArray(json.data) ? json.data.length : 'N/A');
     const items: { matchId: number; umpires: { sequence: number; status: string }[] }[] =
       Array.isArray(json.data) ? json.data : [];
 

@@ -409,15 +409,10 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50">
       {/* Disclaimer banner */}
       <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-center text-xs text-yellow-800">
-        This is not an official Football Queensland page. Data is sourced from the{' '}
+        Data is sourced from{' '}
         <a href="https://registration.squadi.com/liveScoreSeasonFixture" target="_blank" rel="noopener noreferrer" className="underline font-medium">
           Squadi
-        </a>{' '}
-        and{' '}
-        <a href="https://registration.squadi.com/officialAppointments?organisationKey=74f39f3a-6e73-48a8-b837-705aba4c4512&competitionUniqueKey=8671e1f4-b6ae-4062-88cc-b759d8b1902e&yearId=8&divisionId=All" target="_blank" rel="noopener noreferrer" className="underline font-medium">
-          Ref Appointments
-        </a>{' '}
-        websites.
+        </a>
       </div>
 
       {/* Sticky header + tabs */}

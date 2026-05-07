@@ -12,6 +12,42 @@ import ContactModal from '@/components/ContactModal';
 
 type Tab = 'fixtures' | 'results' | 'ladder' | 'statistics';
 
+const TABS: Tab[] = ['fixtures', 'results', 'ladder', 'statistics'];
+
+function readURL(): { tab: Tab; filters: ActiveFilters } {
+  if (typeof window === 'undefined') return { tab: 'fixtures', filters: EMPTY_FILTERS };
+  const p = new URLSearchParams(window.location.search);
+  const rawTab = p.get('tab') as Tab;
+  const tab: Tab = TABS.includes(rawTab) ? rawTab : 'fixtures';
+  const arr = (key: string) => p.get(key)?.split(',').filter(Boolean) ?? [];
+  return {
+    tab,
+    filters: {
+      competitions: arr('competitions'),
+      ageGroups: arr('ageGroups'),
+      locations: arr('locations'),
+      clubs: arr('clubs'),
+      teams: arr('teams'),
+      dateFrom: p.get('dateFrom') ?? '',
+      dateTo: p.get('dateTo') ?? '',
+    },
+  };
+}
+
+function writeURL(tab: Tab, filters: ActiveFilters) {
+  const p = new URLSearchParams();
+  if (tab !== 'fixtures') p.set('tab', tab);
+  if (filters.competitions.length) p.set('competitions', filters.competitions.join(','));
+  if (filters.ageGroups.length) p.set('ageGroups', filters.ageGroups.join(','));
+  if (filters.locations.length) p.set('locations', filters.locations.join(','));
+  if (filters.clubs.length) p.set('clubs', filters.clubs.join(','));
+  if (filters.teams.length) p.set('teams', filters.teams.join(','));
+  if (filters.dateFrom) p.set('dateFrom', filters.dateFrom);
+  if (filters.dateTo) p.set('dateTo', filters.dateTo);
+  const qs = p.toString();
+  window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+}
+
 const STAT_CATEGORIES: { key: StatCategory; label: string }[] = [
   { key: 'goals', label: 'Goals' },
   { key: 'assists', label: 'Assists' },
@@ -97,18 +133,12 @@ function DateDivider({ startTime }: { startTime: string }) {
 }
 
 export default function Home() {
-  const [tab, setTab] = useState<Tab>('fixtures');
+  const [tab, setTab] = useState<Tab>(() => readURL().tab);
   const [fixtureData, setFixtureData] = useState<FixtureData | null>(null);
   const [ladderData, setLadderData] = useState<LadderData | null>(null);
   const [fixtureError, setFixtureError] = useState<string | null>(null);
   const [ladderError, setLadderError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<ActiveFilters>(() => {
-    try {
-      const raw = localStorage.getItem('squadi-filters');
-      if (raw) return { ...EMPTY_FILTERS, ...JSON.parse(raw) };
-    } catch {}
-    return EMPTY_FILTERS;
-  });
+  const [filters, setFilters] = useState<ActiveFilters>(() => readURL().filters);
   const [reloading, setReloading] = useState(false);
   const [showPastFixtures, setShowPastFixtures] = useState(false);
   const [statsData, setStatsData] = useState<StatsData | null>(null);
@@ -117,9 +147,7 @@ export default function Home() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [showContact, setShowContact] = useState(false);
 
-  useEffect(() => {
-    try { localStorage.setItem('squadi-filters', JSON.stringify(filters)); } catch {}
-  }, [filters]);
+  useEffect(() => { writeURL(tab, filters); }, [tab, filters]);
 
   useEffect(() => {
     fetch('/api/fixtures')

@@ -102,7 +102,13 @@ export default function Home() {
   const [ladderData, setLadderData] = useState<LadderData | null>(null);
   const [fixtureError, setFixtureError] = useState<string | null>(null);
   const [ladderError, setLadderError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<ActiveFilters>(EMPTY_FILTERS);
+  const [filters, setFilters] = useState<ActiveFilters>(() => {
+    try {
+      const raw = localStorage.getItem('squadi-filters');
+      if (raw) return { ...EMPTY_FILTERS, ...JSON.parse(raw) };
+    } catch {}
+    return EMPTY_FILTERS;
+  });
   const [reloading, setReloading] = useState(false);
   const [showPastFixtures, setShowPastFixtures] = useState(false);
   const [statsData, setStatsData] = useState<StatsData | null>(null);
@@ -110,6 +116,10 @@ export default function Home() {
   const [statsCategory, setStatsCategory] = useState<StatCategory>('goals');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [showContact, setShowContact] = useState(false);
+
+  useEffect(() => {
+    try { localStorage.setItem('squadi-filters', JSON.stringify(filters)); } catch {}
+  }, [filters]);
 
   useEffect(() => {
     fetch('/api/fixtures')

@@ -423,6 +423,7 @@ export default function Home() {
         <a href="https://registration.squadi.com/liveScoreSeasonFixture" target="_blank" rel="noopener noreferrer" className="underline font-medium">
           Squadi
         </a>
+        .
       </div>
 
       {/* Sticky header + tabs */}

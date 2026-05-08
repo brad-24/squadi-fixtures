@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { NextResponse } from 'next/server';
 import type { Appointment } from '@/types';
 
@@ -37,7 +39,10 @@ export async function GET(_request: Request) {
       cache: 'no-store',
     });
 
-    if (!res.ok) return NextResponse.json([]);
+    if (!res.ok) {
+      console.error('Appointments fetch failed:', res.status, await res.text().catch(() => ''));
+      return NextResponse.json([]);
+    }
 
     const json = await res.json();
     const items: { matchId: number; umpires: { sequence: number; status: string }[] }[] =

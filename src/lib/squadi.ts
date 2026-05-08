@@ -2,6 +2,7 @@ import type {
   Division, Match, FixtureData,
   LadderDivision, LadderData, LadderEntry,
   StatsData, StatCategory, PlayerStatEntry,
+  Appointment,
 } from '@/types';
 import { extractAgeGroup, extractClub } from '@/lib/utils';
 import { COMPETITIONS, SQUADI_BASE } from '@/lib/competitions';
@@ -175,4 +176,33 @@ export async function loadStats(): Promise<StatsData> {
     yellowCards: accum.yellowCards.sort((a, b) => b.count - a.count),
     redCards: accum.redCards.sort((a, b) => b.count - a.count),
   };
+}
+
+// POST with text/plain avoids CORS preflight (JSON body still works if Squadi ignores Content-Type)
+export async function loadAppointments(): Promise<Appointment[]> {
+  try {
+    const res = await fetch(`${SQUADI_BASE}/public/appointments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        yearRefId: 8,
+        organisationUniqueKey: '78a14e91-3dbc-4b51-a52d-f5642854e8ee',
+        competitionIds: [], venueIds: [], fieldIds: [], ageGroupIds: [],
+        appointmentStatus: '', dateFrom: null, dateTo: null,
+        page: 1, limit: 2000,
+      }),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const items: { matchId: number; umpires: { sequence: number; status: string }[] }[] =
+      Array.isArray(json.data) ? json.data : [];
+    return items.map((item) => ({
+      matchId: item.matchId,
+      ref: item.umpires.find((u) => u.sequence === 1)?.status === 'appointed',
+      ar1: item.umpires.find((u) => u.sequence === 2)?.status === 'appointed',
+      ar2: item.umpires.find((u) => u.sequence === 3)?.status === 'appointed',
+    }));
+  } catch {
+    return [];
+  }
 }

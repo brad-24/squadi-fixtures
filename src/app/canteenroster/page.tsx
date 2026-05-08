@@ -266,11 +266,10 @@ export default function CanteenRosterPage() {
                         </td>
                         <td className="px-3 py-2.5 border border-gray-200 align-top">
                           {slot.teams.map((t, i) => (
-                            <div key={i} className={i > 0 ? 'mt-1 pt-1 border-t border-gray-100' : ''}>
-                              <span className="font-medium text-gray-800">{t.teamName}</span>
-                              <span className="text-gray-400 text-xs ml-1.5">
-                                vs {t.opponentName} · {fmtMins(t.gameMins)}
-                              </span>
+                            <div key={i} className={i > 0 ? 'mt-2 pt-2 border-t border-gray-100' : ''}>
+                              <div className="font-medium text-gray-800">{t.teamName}</div>
+                              <div className="text-xs text-gray-400 mt-0.5">vs {t.opponentName}</div>
+                              <div className="text-xs text-gray-400">Kick Off - {fmtMins(t.gameMins)}</div>
                             </div>
                           ))}
                         </td>

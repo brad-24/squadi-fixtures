@@ -38,7 +38,12 @@ export async function GET(request: Request) {
       );
     });
 
-    const roundResults = await Promise.all(matchFetches);
+    const roundSettled = await Promise.allSettled(matchFetches);
+    const roundResults = roundSettled.flatMap((r) => {
+      if (r.status === 'fulfilled') return [r.value];
+      console.warn('Fixtures: match fetch failed (skipped):', r.reason);
+      return [];
+    });
 
     const rawMatches: Match[] = [];
     for (const { data, div, compId } of roundResults) {

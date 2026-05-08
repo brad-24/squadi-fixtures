@@ -108,35 +108,59 @@ export default function CanteenRosterPage() {
   }, [volunteers]);
 
   const weekends = useMemo((): Weekend[] => {
-    const byDate = new Map<string, Match[]>();
+    // Separate maps: all venue matches for slot coverage; Willowburn-only for assignments
+    const allVenueByDate = new Map<string, Match[]>();
+    const willowburnByDate = new Map<string, Match[]>();
     for (const m of matches) {
-      if (!isWillowburnVenue(m) || !willowburnTeam(m)) continue;
+      if (!isWillowburnVenue(m)) continue;
       const dk = formatDateKey(m.startTime);
       const dow = new Date(dk).getDay();
       if (dow !== 0 && dow !== 6) continue;
-      if (!byDate.has(dk)) byDate.set(dk, []);
-      byDate.get(dk)!.push(m);
+      if (!allVenueByDate.has(dk)) allVenueByDate.set(dk, []);
+      allVenueByDate.get(dk)!.push(m);
+      if (willowburnTeam(m)) {
+        if (!willowburnByDate.has(dk)) willowburnByDate.set(dk, []);
+        willowburnByDate.get(dk)!.push(m);
+      }
     }
 
-    const dayRosters: DayRoster[] = [...byDate.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([dateKey, dayMatches]) => {
-        const slotMap = new Map<number, SlotRow['teams']>();
-        for (const m of dayMatches) {
+    // Only show days that have at least one Willowburn match
+    const dayRosters: DayRoster[] = [...willowburnByDate.keys()]
+      .sort()
+      .map((dateKey) => {
+        const allDay = allVenueByDate.get(dateKey) ?? [];
+        const wbDay = willowburnByDate.get(dateKey) ?? [];
+
+        // Build Willowburn assignments keyed by their canteen slot
+        const assignments = new Map<number, SlotRow['teams']>();
+        for (const m of wbDay) {
           const gameMins = toBrisbaneMins(m.startTime);
           const senior = isSenior(m);
           const slot = canteenSlot(gameMins, senior);
-          if (!slotMap.has(slot)) slotMap.set(slot, []);
-          slotMap.get(slot)!.push({
+          if (!assignments.has(slot)) assignments.set(slot, []);
+          assignments.get(slot)!.push({
             teamName: willowburnTeam(m)!,
             opponentName: opponent(m),
             gameMins,
             senior,
           });
         }
-        const slots: SlotRow[] = [...slotMap.entries()]
-          .sort(([a], [b]) => a - b)
-          .map(([slotStart, teams]) => ({ slotStart, teams }));
+
+        // All coverage slots: 30 min before every game at the venue + Willowburn-specific slots
+        const allSlots = new Set<number>();
+        for (const m of allDay) {
+          allSlots.add(canteenSlot(toBrisbaneMins(m.startTime), false));
+        }
+        for (const slot of assignments.keys()) {
+          allSlots.add(slot);
+        }
+
+        const slots: SlotRow[] = [...allSlots]
+          .sort((a, b) => a - b)
+          .map((slotStart) => ({
+            slotStart,
+            teams: assignments.get(slotStart) ?? [],
+          }));
         return { dateKey, slots };
       });
 
@@ -273,7 +297,9 @@ export default function CanteenRosterPage() {
                           {fmtMins(slot.slotStart)} – {fmtMins(slot.slotStart + 30)}
                         </td>
                         <td className="px-3 py-2.5 border border-gray-200 align-top">
-                          {slot.teams.map((t, i) => (
+                          {slot.teams.length === 0 ? (
+                            <span className="text-gray-400 italic text-sm">Volunteer required</span>
+                          ) : slot.teams.map((t, i) => (
                             <div key={i} className={i > 0 ? 'mt-2 pt-2 border-t border-gray-100' : ''}>
                               <div className="font-medium text-gray-800">{t.teamName}</div>
                               <div className="text-xs text-gray-400 mt-0.5">vs {t.opponentName}</div>

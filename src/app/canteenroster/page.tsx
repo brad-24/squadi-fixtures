@@ -151,7 +151,7 @@ export default function CanteenRosterPage() {
         const gameMins = allDay.map((m) => toBrisbaneMins(m.startTime));
         const firstGame = Math.min(...gameMins);
         const lastGame = Math.max(...gameMins);
-        const firstSlot = Math.floor(firstGame / 30) * 30 - 30;
+        const firstSlot = Math.floor(firstGame / 30) * 30 - 60;
         const lastSlot = Math.floor(lastGame / 30) * 30 - 30;
 
         const allSlots = new Set<number>();

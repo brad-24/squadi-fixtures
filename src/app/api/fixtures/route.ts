@@ -3,6 +3,8 @@ import type { Division, Match } from '@/types';
 import { extractAgeGroup, extractClub } from '@/lib/utils';
 import { COMPETITIONS, SQUADI_BASE, SQUADI_HEADERS } from '@/lib/competitions';
 
+export const maxDuration = 60;
+
 function makeSquadiGet(noCache: boolean) {
   return async function squadiGet(path: string) {
     const res = await fetch(`${SQUADI_BASE}${path}`, {
@@ -12,18 +14,6 @@ function makeSquadiGet(noCache: boolean) {
     if (!res.ok) throw new Error(`Squadi ${path} → ${res.status}`);
     return res.json();
   };
-}
-
-async function batchSettled<T>(
-  fns: (() => Promise<T>)[],
-  concurrency: number,
-): Promise<PromiseSettledResult<T>[]> {
-  const results: PromiseSettledResult<T>[] = [];
-  for (let i = 0; i < fns.length; i += concurrency) {
-    const batch = await Promise.allSettled(fns.slice(i, i + concurrency).map((f) => f()));
-    results.push(...batch);
-  }
-  return results;
 }
 
 export async function GET(request: Request) {
@@ -43,14 +33,14 @@ export async function GET(request: Request) {
 
     const matchFetches = divisionResults.flatMap((divisions: Division[], ci) => {
       const [, compId] = COMPETITIONS[ci];
-      return divisions.map((div: Division) => () =>
+      return divisions.map((div: Division) =>
         squadiGet(
           `/round/matches?competitionId=${compId}&divisionId=${div.id}&ignoreStatuses=%5B4%5D`,
         ).then((data) => ({ data, div, compId })),
       );
     });
 
-    const roundSettled = await batchSettled(matchFetches, 8);
+    const roundSettled = await Promise.allSettled(matchFetches);
     const roundResults = roundSettled.flatMap((r) => {
       if (r.status === 'fulfilled') return [r.value];
       console.warn('Fixtures: match fetch failed (skipped):', r.reason);

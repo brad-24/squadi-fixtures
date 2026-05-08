@@ -34,9 +34,15 @@ function fmtMins(totalMins: number): string {
   return `${h12}:${String(m).padStart(2, '0')}${h < 12 ? 'am' : 'pm'}`;
 }
 
-// The canteen slot is the 30-min window ending when the game starts (rounded down to 30-min boundary)
-function canteenSlot(gameMins: number): number {
-  return gameMins - (gameMins % 30) - 30;
+// Senior teams need to be in canteen 90 mins before kick-off (1 hour warm-up after).
+// Junior teams need 30 mins before. Slot is always 30 mins wide.
+function isSenior(m: Match): boolean {
+  return !/^U\d/i.test(m.ageGroup);
+}
+
+function canteenSlot(gameMins: number, senior: boolean): number {
+  const offset = senior ? 90 : 30;
+  return gameMins - (gameMins % 30) - offset;
 }
 
 function saturdayOf(dateKey: string): string {
@@ -68,7 +74,7 @@ function formatWeekendOption(satKey: string): string {
 
 type SlotRow = {
   slotStart: number;
-  teams: Array<{ teamName: string; opponentName: string; gameMins: number }>;
+  teams: Array<{ teamName: string; opponentName: string; gameMins: number; senior: boolean }>;
 };
 
 type DayRoster = { dateKey: string; slots: SlotRow[] };
@@ -118,12 +124,14 @@ export default function CanteenRosterPage() {
         const slotMap = new Map<number, SlotRow['teams']>();
         for (const m of dayMatches) {
           const gameMins = toBrisbaneMins(m.startTime);
-          const slot = canteenSlot(gameMins);
+          const senior = isSenior(m);
+          const slot = canteenSlot(gameMins, senior);
           if (!slotMap.has(slot)) slotMap.set(slot, []);
           slotMap.get(slot)!.push({
             teamName: willowburnTeam(m)!,
             opponentName: opponent(m),
             gameMins,
+            senior,
           });
         }
         const slots: SlotRow[] = [...slotMap.entries()]

@@ -1,0 +1,79 @@
+name: Sync Appointments
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch appointments from Squadi
+        run: |
+          node - <<'EOF'
+          const https = require('https');
+          const fs = require('fs');
+
+          const payload = JSON.stringify({
+            yearRefId: 8,
+            organisationUniqueKey: '78a14e91-3dbc-4b51-a52d-f5642854e8ee',
+            competitionIds: [], venueIds: [], fieldIds: [], ageGroupIds: [],
+            appointmentStatus: '', dateFrom: null, dateTo: null,
+            page: 1, limit: 2000,
+          });
+
+          const options = {
+            hostname: 'api.squadi.com',
+            port: 443,
+            path: '/livescores/public/appointments',
+            method: 'POST',
+            headers: {
+              'Origin': 'https://registration.squadi.com',
+              'Referer': 'https://registration.squadi.com/',
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              'Content-Length': Buffer.byteLength(payload),
+            },
+          };
+
+          const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => data += chunk);
+            res.on('end', () => {
+              if (res.statusCode !== 200) {
+                console.error('Squadi returned', res.statusCode, '— skipping update');
+                process.exit(1);
+              }
+              const json = JSON.parse(data);
+              const items = Array.isArray(json.data) ? json.data : [];
+              const appointments = items.map((item) => ({
+                matchId: item.matchId,
+                ref: item.umpires?.find((u) => u.sequence === 1)?.status === 'appointed' ?? false,
+                ar1: item.umpires?.find((u) => u.sequence === 2)?.status === 'appointed' ?? false,
+                ar2: item.umpires?.find((u) => u.sequence === 3)?.status === 'appointed' ?? false,
+              }));
+              fs.writeFileSync('public/appointments.json', JSON.stringify(appointments));
+              console.log('Saved', appointments.length, 'appointments');
+            });
+          });
+
+          req.on('error', (e) => { console.error('Request error:', e.message); process.exit(1); });
+          req.write(payload);
+          req.end();
+          EOF
+
+      - name: Commit if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add public/appointments.json
+          if git diff --staged --quiet; then
+            echo "No changes to appointments"
+          else
+            git commit -m "chore: sync appointments data"
+            git push
+          fi

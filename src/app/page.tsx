@@ -9,7 +9,7 @@ import MatchCard from '@/components/MatchCard';
 import LadderView from '@/components/LadderView';
 import StatsView from '@/components/StatsView';
 import ContactModal from '@/components/ContactModal';
-import { loadFixtures, loadLadder, loadStats, loadAppointments } from '@/lib/squadi';
+import { loadFixtures, loadLadder, loadStats } from '@/lib/squadi';
 
 type Tab = 'fixtures' | 'results' | 'ladder' | 'statistics';
 
@@ -154,7 +154,7 @@ export default function Home() {
     loadFixtures().then(setFixtureData).catch((e) => setFixtureError(e.message));
     loadLadder().then(setLadderData).catch((e) => setLadderError(e.message));
     loadStats().then(setStatsData).catch((e) => setStatsError(e.message));
-    loadAppointments().then(setAppointments);
+    fetch('/appointments.json').then((r) => r.ok ? r.json() : []).then(setAppointments).catch(() => {});
   }, []);
 
   async function handleReload() {
@@ -166,7 +166,7 @@ export default function Home() {
       loadFixtures(),
       loadLadder(),
       loadStats(),
-      loadAppointments(),
+      fetch('/appointments.json', { cache: 'no-store' }).then((r) => r.ok ? r.json() : []),
     ]);
     if (f.status === 'fulfilled') setFixtureData(f.value);
     else setFixtureError((f.reason as Error).message);

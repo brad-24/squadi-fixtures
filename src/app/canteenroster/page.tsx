@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import * as XLSX from 'xlsx';
 import { loadFixtures } from '@/lib/squadi';
 import type { Match } from '@/types';
 import { formatDateKey } from '@/lib/utils';
@@ -222,29 +223,55 @@ export default function CanteenRosterPage() {
     );
   }
 
+  function exportXLSX() {
+    if (!currentWeekend) return;
+    const wb = XLSX.utils.book_new();
+    for (const day of currentWeekend.days) {
+      const rows: string[][] = [
+        ['Time Slot', 'Responsible Team', 'Kick Off', 'Volunteer 1', 'Volunteer 2'],
+        ...day.slots.flatMap((slot) => {
+          const timeLabel = `${fmtMins(slot.slotStart)} – ${fmtMins(slot.slotStart + 30)}`;
+          if (slot.teams.length === 0) {
+            return [[timeLabel, 'Volunteer required', '', volunteers[vKey(day.dateKey, slot.slotStart, 0)] ?? '', volunteers[vKey(day.dateKey, slot.slotStart, 1)] ?? '']];
+          }
+          return slot.teams.map((t, i) => [
+            i === 0 ? timeLabel : '',
+            t.teamName,
+            `vs ${t.opponentName} · ${fmtMins(t.gameMins)}`,
+            i === 0 ? (volunteers[vKey(day.dateKey, slot.slotStart, 0)] ?? '') : '',
+            i === 0 ? (volunteers[vKey(day.dateKey, slot.slotStart, 1)] ?? '') : '',
+          ]);
+        }),
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [{ wch: 18 }, { wch: 32 }, { wch: 28 }, { wch: 20 }, { wch: 20 }];
+      const sheetName = formatDayLabel(day.dateKey).split(',')[0]; // e.g. "Saturday"
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    }
+    const filename = `canteen-roster-${currentWeekend.satKey}.xlsx`;
+    XLSX.writeFile(wb, filename);
+  }
+
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 print:px-0 print:py-0">
+    <div className="max-w-3xl mx-auto px-4 py-6">
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-6 print:mb-4">
+      <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 print:text-xl">Canteen Roster</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Canteen Roster</h1>
           <p className="text-sm text-gray-500 mt-0.5">Commonwealth Oval — Willowburn FC</p>
-          {/* Show selected weekend in print */}
-          {currentWeekend && (
-            <p className="hidden print:block text-sm text-gray-600 mt-1">{currentWeekend.label}</p>
-          )}
         </div>
         <button
-          onClick={() => window.print()}
+          onClick={exportXLSX}
           type="button"
-          className="print:hidden flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          disabled={!currentWeekend}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-40"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          Print roster
+          Export to XLSX
         </button>
       </div>
 
@@ -253,7 +280,7 @@ export default function CanteenRosterPage() {
       ) : (
         <>
           {/* Weekend selector */}
-          <div className="mb-6 print:hidden">
+          <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">Weekend</label>
             <select
               value={selectedWeekend}
@@ -268,7 +295,7 @@ export default function CanteenRosterPage() {
 
           {/* Roster for each day */}
           {currentWeekend?.days.map((day) => (
-            <div key={day.dateKey} className="mb-8 print:mb-6">
+            <div key={day.dateKey} className="mb-8">
               <h2 className="text-base font-bold text-gray-800 mb-3 pb-1 border-b border-gray-200">
                 {formatDayLabel(day.dateKey)}
               </h2>
@@ -317,7 +344,7 @@ export default function CanteenRosterPage() {
                               value={volunteers[vKey(day.dateKey, slot.slotStart, idx)] ?? ''}
                               onChange={(e) => setVol(vKey(day.dateKey, slot.slotStart, idx), e.target.value)}
                               placeholder="Name"
-                              className="w-full px-2 py-1 rounded border border-gray-200 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-blue-500 print:border-0 print:border-b print:border-gray-400 print:rounded-none print:bg-transparent print:px-0"
+                              className="w-full px-2 py-1 rounded border border-gray-200 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-blue-500"
                             />
                           </td>
                         ))}

@@ -140,9 +140,9 @@ export async function loadStats(): Promise<StatsData> {
 
   const yearRefId = compResults[0]?.yearRefId ?? 8;
 
-  const fetches = STATS_COMPETITIONS.flatMap(([, compId]) =>
+  const fetches = STATS_COMPETITIONS.flatMap(([compKey, compId]) =>
     (Object.entries(STAT_TYPES) as [StatCategory, string][]).map(([category, statType]) =>
-      get(`/stats/public/scoringStatsByGrade?statType=${encodeURIComponent(statType)}&competitionId=${compId}&yearRefId=${yearRefId}&offset=0&limit=-1`)
+      get(`/stats/public/scoringStatsByGrade?statType=${encodeURIComponent(statType)}&competitionUniqueKey=${compKey}&yearRefId=${yearRefId}&divisionId=All&offset=0&limit=-1`)
         .then((data: any) => ({ data, compId, category }))
         .catch(() => ({ data: { result: [] }, compId, category })),
     ),

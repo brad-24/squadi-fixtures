@@ -41,10 +41,10 @@ export async function GET(request: Request) {
 
     const yearRefId = compResults[0]?.yearRefId ?? 8;
 
-    const fetches = STATS_COMPETITIONS.flatMap(([, compId]) =>
+    const fetches = STATS_COMPETITIONS.flatMap(([compKey, compId]) =>
       (Object.entries(STAT_TYPES) as [StatCategory, string][]).map(([category, statType]) =>
         squadiGet(
-          `/stats/public/scoringStatsByGrade?statType=${encodeURIComponent(statType)}&competitionId=${compId}&yearRefId=${yearRefId}&offset=0&limit=-1`,
+          `/stats/public/scoringStatsByGrade?statType=${encodeURIComponent(statType)}&competitionUniqueKey=${compKey}&yearRefId=${yearRefId}&divisionId=All&offset=0&limit=-1`,
         )
           .then((data) => ({ data, compId, category }))
           .catch(() => ({ data: { result: [] }, compId, category })),

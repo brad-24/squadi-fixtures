@@ -9,6 +9,7 @@ import MatchCard from '@/components/MatchCard';
 import LadderView from '@/components/LadderView';
 import StatsView from '@/components/StatsView';
 import ContactModal from '@/components/ContactModal';
+import { loadFixtures, loadLadder, loadStats } from '@/lib/squadi';
 
 type Tab = 'fixtures' | 'results' | 'ladder' | 'statistics';
 
@@ -150,18 +151,9 @@ export default function Home() {
   useEffect(() => { writeURL(tab, filters); }, [tab, filters]);
 
   useEffect(() => {
-    fetch('/api/fixtures')
-      .then(async (r) => { if (!r.ok) { const b = await r.json().catch(() => ({})); throw new Error(b.error ?? r.status); } return r.json(); })
-      .then(setFixtureData)
-      .catch((e) => setFixtureError(e.message));
-    fetch('/api/ladder')
-      .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
-      .then(setLadderData)
-      .catch((e) => setLadderError(e.message));
-    fetch('/api/stats')
-      .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
-      .then(setStatsData)
-      .catch((e) => setStatsError(e.message));
+    loadFixtures().then(setFixtureData).catch((e) => setFixtureError(e.message));
+    loadLadder().then(setLadderData).catch((e) => setLadderError(e.message));
+    loadStats().then(setStatsData).catch((e) => setStatsError(e.message));
     fetch('/api/appointments')
       .then((r) => r.ok ? r.json() : [])
       .then(setAppointments)
@@ -173,23 +165,20 @@ export default function Home() {
     setFixtureError(null);
     setLadderError(null);
     setStatsError(null);
-    try {
-      const [fRes, lRes, sRes, aRes] = await Promise.all([
-        fetch('/api/fixtures?force=1', { cache: 'no-store' }),
-        fetch('/api/ladder?force=1', { cache: 'no-store' }),
-        fetch('/api/stats?force=1', { cache: 'no-store' }),
-        fetch('/api/appointments?force=1', { cache: 'no-store' }),
-      ]);
-      if (fRes.ok) setFixtureData(await fRes.json());
-      else setFixtureError(String(fRes.status));
-      if (lRes.ok) setLadderData(await lRes.json());
-      else setLadderError(String(lRes.status));
-      if (sRes.ok) setStatsData(await sRes.json());
-      else setStatsError(String(sRes.status));
-      if (aRes.ok) setAppointments(await aRes.json());
-    } catch { /* keep existing data visible */ } finally {
-      setReloading(false);
-    }
+    const [f, l, s, a] = await Promise.allSettled([
+      loadFixtures(),
+      loadLadder(),
+      loadStats(),
+      fetch('/api/appointments?force=1', { cache: 'no-store' }).then((r) => r.ok ? r.json() : []),
+    ]);
+    if (f.status === 'fulfilled') setFixtureData(f.value);
+    else setFixtureError((f.reason as Error).message);
+    if (l.status === 'fulfilled') setLadderData(l.value);
+    else setLadderError((l.reason as Error).message);
+    if (s.status === 'fulfilled') setStatsData(s.value);
+    else setStatsError((s.reason as Error).message);
+    if (a.status === 'fulfilled') setAppointments(a.value);
+    setReloading(false);
   }
 
   const filterOptions = useMemo(() => {

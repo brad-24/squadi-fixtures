@@ -151,7 +151,7 @@ export default function Home() {
 
   useEffect(() => {
     fetch('/api/fixtures')
-      .then((r) => { if (!r.ok) throw new Error(`${r.status}`); return r.json(); })
+      .then(async (r) => { if (!r.ok) { const b = await r.json().catch(() => ({})); throw new Error(b.error ?? r.status); } return r.json(); })
       .then(setFixtureData)
       .catch((e) => setFixtureError(e.message));
     fetch('/api/ladder')

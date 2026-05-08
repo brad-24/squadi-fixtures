@@ -225,31 +225,31 @@ export default function CanteenRosterPage() {
 
   function exportXLSX() {
     if (!currentWeekend) return;
-    const wb = XLSX.utils.book_new();
+    const rows: string[][] = [['Time Slot', 'Responsible Team', 'Kick Off', 'Volunteer 1', 'Volunteer 2']];
     for (const day of currentWeekend.days) {
-      const rows: string[][] = [
-        ['Time Slot', 'Responsible Team', 'Kick Off', 'Volunteer 1', 'Volunteer 2'],
-        ...day.slots.flatMap((slot) => {
-          const timeLabel = `${fmtMins(slot.slotStart)} – ${fmtMins(slot.slotStart + 30)}`;
-          if (slot.teams.length === 0) {
-            return [[timeLabel, 'Volunteer required', '', volunteers[vKey(day.dateKey, slot.slotStart, 0)] ?? '', volunteers[vKey(day.dateKey, slot.slotStart, 1)] ?? '']];
-          }
-          return slot.teams.map((t, i) => [
-            i === 0 ? timeLabel : '',
-            t.teamName,
-            `vs ${t.opponentName} · ${fmtMins(t.gameMins)}`,
-            i === 0 ? (volunteers[vKey(day.dateKey, slot.slotStart, 0)] ?? '') : '',
-            i === 0 ? (volunteers[vKey(day.dateKey, slot.slotStart, 1)] ?? '') : '',
-          ]);
-        }),
-      ];
-      const ws = XLSX.utils.aoa_to_sheet(rows);
-      ws['!cols'] = [{ wch: 18 }, { wch: 32 }, { wch: 28 }, { wch: 20 }, { wch: 20 }];
-      const sheetName = formatDayLabel(day.dateKey).split(',')[0]; // e.g. "Saturday"
-      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      rows.push([formatDayLabel(day.dateKey), '', '', '', '']);
+      for (const slot of day.slots) {
+        const timeLabel = `${fmtMins(slot.slotStart)} – ${fmtMins(slot.slotStart + 30)}`;
+        if (slot.teams.length === 0) {
+          rows.push([timeLabel, 'Volunteer required', '', volunteers[vKey(day.dateKey, slot.slotStart, 0)] ?? '', volunteers[vKey(day.dateKey, slot.slotStart, 1)] ?? '']);
+        } else {
+          slot.teams.forEach((t, i) => {
+            rows.push([
+              i === 0 ? timeLabel : '',
+              t.teamName,
+              `vs ${t.opponentName} · ${fmtMins(t.gameMins)}`,
+              i === 0 ? (volunteers[vKey(day.dateKey, slot.slotStart, 0)] ?? '') : '',
+              i === 0 ? (volunteers[vKey(day.dateKey, slot.slotStart, 1)] ?? '') : '',
+            ]);
+          });
+        }
+      }
     }
-    const filename = `canteen-roster-${currentWeekend.satKey}.xlsx`;
-    XLSX.writeFile(wb, filename);
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 18 }, { wch: 32 }, { wch: 28 }, { wch: 20 }, { wch: 20 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Canteen Roster');
+    XLSX.writeFile(wb, `canteen-roster-${currentWeekend.satKey}.xlsx`);
   }
 
   return (

@@ -146,14 +146,17 @@ export default function CanteenRosterPage() {
           });
         }
 
-        // All coverage slots: 30 min before every game at the venue + Willowburn-specific slots
+        // Continuous 30-min slots from one slot before first kick-off to the slot before last kick-off,
+        // plus any earlier Willowburn-specific slots (e.g. seniors assigned 90 min before)
+        const gameMins = allDay.map((m) => toBrisbaneMins(m.startTime));
+        const firstGame = Math.min(...gameMins);
+        const lastGame = Math.max(...gameMins);
+        const firstSlot = Math.floor(firstGame / 30) * 30 - 30;
+        const lastSlot = Math.floor(lastGame / 30) * 30 - 30;
+
         const allSlots = new Set<number>();
-        for (const m of allDay) {
-          allSlots.add(canteenSlot(toBrisbaneMins(m.startTime), false));
-        }
-        for (const slot of assignments.keys()) {
-          allSlots.add(slot);
-        }
+        for (let s = firstSlot; s <= lastSlot; s += 30) allSlots.add(s);
+        for (const slot of assignments.keys()) allSlots.add(slot);
 
         const slots: SlotRow[] = [...allSlots]
           .sort((a, b) => a - b)

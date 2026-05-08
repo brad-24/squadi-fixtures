@@ -44,6 +44,9 @@ export async function GET(request: Request) {
       console.warn('Fixtures: match fetch failed (skipped):', r.reason);
       return [];
     });
+    if (roundResults.length === 0 && matchFetches.length > 0) {
+      throw (roundSettled.find((r) => r.status === 'rejected') as PromiseRejectedResult).reason;
+    }
 
     const rawMatches: Match[] = [];
     for (const { data, div, compId } of roundResults) {

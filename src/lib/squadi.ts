@@ -131,31 +131,27 @@ const STAT_TYPES: Record<StatCategory, string> = {
 };
 
 export async function loadStats(): Promise<StatsData> {
-  const compResults = await Promise.all(
-    STATS_COMPETITIONS.map(([, id]) => get(`/competitions/id/${id}`)),
-  );
+  const [compResults, divisionResults] = await Promise.all([
+    Promise.all(STATS_COMPETITIONS.map(([, id]) => get(`/competitions/id/${id}`))),
+    Promise.all(STATS_COMPETITIONS.map(([key]) => get(`/division?competitionKey=${key}`))),
+  ]);
 
   const compNameMap = new Map<number, string>(
     STATS_COMPETITIONS.map(([, id], i) => [id, compResults[i]?.name ?? '']),
   );
 
   const yearRefId = compResults[0]?.yearRefId ?? 8;
-  console.log('[stats] yearRefId:', yearRefId, 'comp0:', compResults[0]);
 
-  const fetches = STATS_COMPETITIONS.flatMap(([compKey, compId]) =>
-    (Object.entries(STAT_TYPES) as [StatCategory, string][]).map(([category, statType]) => {
-      const url = `/stats/public/scoringStatsByGrade?statType=${encodeURIComponent(statType)}&competitionUniqueKey=${compKey}&yearRefId=${yearRefId}&divisionId=All&offset=0&limit=-1`;
-      return get(url)
-        .then((data: any) => {
-          console.log(`[stats] ${compKey} ${category} → ${data?.result?.length ?? 'err'} items`, data);
-          return { data, compId, category };
-        })
-        .catch((err: Error) => {
-          console.warn(`[stats] ${compKey} ${category} FAILED:`, err.message, url);
-          return { data: { result: [] }, compId, category };
-        });
-    }),
-  );
+  const fetches = STATS_COMPETITIONS.flatMap(([, compId], ci) => {
+    const divisions: Division[] = divisionResults[ci] ?? [];
+    return (Object.entries(STAT_TYPES) as [StatCategory, string][]).flatMap(([category, statType]) =>
+      divisions.map((div) =>
+        get(`/stats/public/scoringStatsByGrade?statType=${encodeURIComponent(statType)}&competitionId=${compId}&yearRefId=${yearRefId}&divisionId=${div.id}&offset=0&limit=-1`)
+          .then((data: any) => ({ data, compId, category }))
+          .catch(() => ({ data: { result: [] }, compId, category })),
+      ),
+    );
+  });
 
   const allResults = await Promise.all(fetches);
   const accum: Record<StatCategory, PlayerStatEntry[]> = {

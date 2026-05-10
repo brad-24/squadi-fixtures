@@ -140,13 +140,21 @@ export async function loadStats(): Promise<StatsData> {
   );
 
   const yearRefId = compResults[0]?.yearRefId ?? 8;
+  console.log('[stats] yearRefId:', yearRefId, 'comp0:', compResults[0]);
 
   const fetches = STATS_COMPETITIONS.flatMap(([compKey, compId]) =>
-    (Object.entries(STAT_TYPES) as [StatCategory, string][]).map(([category, statType]) =>
-      get(`/stats/public/scoringStatsByGrade?statType=${encodeURIComponent(statType)}&competitionUniqueKey=${compKey}&yearRefId=${yearRefId}&divisionId=All&offset=0&limit=-1`)
-        .then((data: any) => ({ data, compId, category }))
-        .catch(() => ({ data: { result: [] }, compId, category })),
-    ),
+    (Object.entries(STAT_TYPES) as [StatCategory, string][]).map(([category, statType]) => {
+      const url = `/stats/public/scoringStatsByGrade?statType=${encodeURIComponent(statType)}&competitionUniqueKey=${compKey}&yearRefId=${yearRefId}&divisionId=All&offset=0&limit=-1`;
+      return get(url)
+        .then((data: any) => {
+          console.log(`[stats] ${compKey} ${category} → ${data?.result?.length ?? 'err'} items`, data);
+          return { data, compId, category };
+        })
+        .catch((err: Error) => {
+          console.warn(`[stats] ${compKey} ${category} FAILED:`, err.message, url);
+          return { data: { result: [] }, compId, category };
+        });
+    }),
   );
 
   const allResults = await Promise.all(fetches);

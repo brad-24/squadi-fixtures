@@ -7,6 +7,7 @@ import {
   getStatusLabel,
   getStatusClasses,
 } from '@/lib/utils';
+import { SQUADI_BASE } from '@/lib/competitions';
 import Image from 'next/image';
 
 interface Props {
@@ -123,9 +124,10 @@ export default function MatchCard({ match, showEvents = false, appointment }: Pr
 
   useEffect(() => {
     if (!showEvents) return;
-    fetch(`/api/match-events?matchId=${match.id}`)
+    fetch(`${SQUADI_BASE}/matches/public/matchEvents?matchId=${match.id}`)
       .then((r) => r.ok ? r.json() : [])
-      .then((raw: MatchEvent[]) => {
+      .then((data: unknown) => {
+        const raw: MatchEvent[] = Array.isArray(data) ? data : [];
         const homeMap = new Map<string, GroupedEvent>();
         const awayMap = new Map<string, GroupedEvent>();
         for (const e of raw) {

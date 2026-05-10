@@ -142,13 +142,23 @@ export async function loadStats(): Promise<StatsData> {
 
   const yearRefId = compResults[0]?.yearRefId ?? 8;
 
+  let firstLog = true;
   const fetches = STATS_COMPETITIONS.flatMap(([, compId], ci) => {
     const divisions: Division[] = divisionResults[ci] ?? [];
     return (Object.entries(STAT_TYPES) as [StatCategory, string][]).flatMap(([category, statType]) =>
       divisions.map((div) =>
         get(`/stats/public/scoringStatsByGrade?statType=${encodeURIComponent(statType)}&competitionId=${compId}&yearRefId=${yearRefId}&divisionId=${div.id}&offset=0&limit=-1`)
-          .then((data: any) => ({ data, compId, category }))
-          .catch(() => ({ data: { result: [] }, compId, category })),
+          .then((data: any) => {
+            if (firstLog) {
+              firstLog = false;
+              console.log(`[stats] sample compId=${compId} divId=${div.id} ${category}:`, JSON.stringify(data).slice(0, 600));
+            }
+            return { data, compId, category };
+          })
+          .catch((err: Error) => {
+            console.warn(`[stats] FAILED compId=${compId} divId=${div.id} ${category}:`, err.message);
+            return { data: { result: [] }, compId, category };
+          }),
       ),
     );
   });

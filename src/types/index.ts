@@ -108,6 +108,18 @@ export interface LadderData {
 
 export type StatCategory = 'goals' | 'assists' | 'yellowCards' | 'redCards';
 
+export interface PlayerStatOccurrence {
+  matchId: number;
+  date: string;
+  opponent: string;
+  homeTeam: string;
+  awayTeam: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  divisionName: string;
+  competitionName: string;
+}
+
 export interface PlayerStatEntry {
   playerName: string;
   shirt: string;
@@ -117,6 +129,7 @@ export interface PlayerStatEntry {
   ageGroup: string;
   divisionName: string;
   count: number;
+  occurrences: PlayerStatOccurrence[];
 }
 
 export interface StatsData {

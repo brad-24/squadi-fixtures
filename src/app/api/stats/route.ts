@@ -78,6 +78,7 @@ export async function GET(request: Request) {
           ageGroup: extractAgeGroup(item.divisionName ?? ''),
           divisionName: item.divisionName ?? '',
           count,
+          occurrences: [],
         });
       }
     }

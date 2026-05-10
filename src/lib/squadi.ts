@@ -159,11 +159,26 @@ export async function loadStats(allMatches: Match[]): Promise<StatsData> {
       const playerName = [e.firstName, e.lastName].filter(Boolean).join(' ');
       if (!playerName) continue;
 
-      const teamName = e.teamId === match.team1.id ? match.team1.name : match.team2.name;
+      const isTeam1 = e.teamId === match.team1.id;
+      const teamName = isTeam1 ? match.team1.name : match.team2.name;
+      const opponent = isTeam1 ? match.team2.name : match.team1.name;
+      const occurrence = {
+        matchId: match.id,
+        date: match.startTime,
+        opponent,
+        homeTeam: match.team1.name,
+        awayTeam: match.team2.name,
+        homeScore: match.team1Score,
+        awayScore: match.team2Score,
+        divisionName: match.divisionName,
+        competitionName: match.competitionName,
+      };
+
       const key = `${playerName}|${e.teamId}`;
       const existing = accum[category].get(key);
       if (existing) {
         existing.count++;
+        existing.occurrences.push(occurrence);
       } else {
         accum[category].set(key, {
           playerName,
@@ -174,6 +189,7 @@ export async function loadStats(allMatches: Match[]): Promise<StatsData> {
           ageGroup: match.ageGroup,
           divisionName: match.divisionName,
           count: 1,
+          occurrences: [occurrence],
         });
       }
     }

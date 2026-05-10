@@ -1,5 +1,8 @@
-import type { StatsData, StatCategory, PlayerStatEntry } from '@/types';
-import { extractClub } from '@/lib/utils';
+'use client';
+
+import { useState } from 'react';
+import type { StatsData, StatCategory, PlayerStatEntry, PlayerStatOccurrence } from '@/types';
+import { extractClub, formatMatchDate, formatDateKey } from '@/lib/utils';
 
 interface Props {
   data: StatsData;
@@ -24,8 +27,92 @@ const COUNT_COLOURS: Record<StatCategory, string> = {
   redCards: 'text-red-700 bg-red-50/60',
 };
 
+function PlayerModal({
+  entry,
+  category,
+  onClose,
+}: {
+  entry: PlayerStatEntry;
+  category: StatCategory;
+  onClose: () => void;
+}) {
+  const label = CATEGORY_LABELS[category];
+  const sorted = [...entry.occurrences].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+  );
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="font-bold text-gray-900 text-base leading-tight">{entry.playerName}</h2>
+            <p className="text-sm text-gray-500 mt-0.5">{entry.teamName}</p>
+          </div>
+          <button
+            onClick={onClose}
+            type="button"
+            className="text-gray-400 hover:text-gray-600 flex-shrink-0 mt-0.5"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Summary */}
+        <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
+          <span className="text-sm text-gray-600">
+            <span className="font-bold text-gray-900">{entry.count}</span>{' '}
+            {label.toLowerCase()} across {entry.occurrences.length} match{entry.occurrences.length !== 1 ? 'es' : ''}
+          </span>
+        </div>
+
+        {/* Match list */}
+        <div className="overflow-y-auto flex-1">
+          {sorted.map((occ, idx) => (
+            <div
+              key={`${occ.matchId}-${idx}`}
+              className="px-5 py-3 border-b border-gray-50 last:border-0"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">
+                    vs {occ.opponent}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">{occ.divisionName}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-sm font-medium text-gray-700">{formatMatchDate(occ.date)}</p>
+                  {occ.homeScore !== null && occ.awayScore !== null && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {occ.homeTeam === entry.teamName
+                        ? `${occ.homeScore}–${occ.awayScore}`
+                        : `${occ.awayScore}–${occ.homeScore}`}{' '}
+                      {(occ.homeTeam === entry.teamName ? occ.homeScore > occ.awayScore : occ.awayScore > occ.homeScore)
+                        ? '(W)' : (occ.homeScore === occ.awayScore ? '(D)' : '(L)')}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function StatsView({ data, category, selectedCompetitions, selectedAgeGroups, selectedClubs, selectedTeams }: Props) {
   const label = CATEGORY_LABELS[category];
+  const [selectedPlayer, setSelectedPlayer] = useState<PlayerStatEntry | null>(null);
 
   const entries: PlayerStatEntry[] = data[category].filter((e) => {
     if (selectedCompetitions.length && !selectedCompetitions.includes(e.competitionName)) return false;
@@ -48,41 +135,52 @@ export default function StatsView({ data, category, selectedCompetitions, select
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-gray-100 bg-gray-50">
-            <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-400 w-8">#</th>
-            <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-400">Player</th>
-            <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-400 hidden sm:table-cell">Team</th>
-            <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-400 hidden lg:table-cell">Division</th>
-            <th className={`text-center px-3 py-2.5 text-xs font-semibold w-14 ${COUNT_COLOURS[category]}`}>
-              {label}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map((entry, idx) => (
-            <tr
-              key={`${category}-${entry.playerName}-${entry.teamId}`}
-              className={`border-b border-gray-50 last:border-0 ${idx % 2 === 0 ? '' : 'bg-gray-50/40'}`}
-            >
-              <td className="px-3 py-2.5 text-xs text-gray-400 font-medium">{idx + 1}</td>
-              <td className="px-3 py-2.5">
-                <div className="font-medium text-gray-800 leading-tight">{entry.playerName}</div>
-                <div className="text-xs text-gray-400 sm:hidden leading-tight mt-0.5">{entry.teamName}</div>
-              </td>
-              <td className="px-3 py-2.5 text-sm text-gray-600 hidden sm:table-cell">{entry.teamName}</td>
-              <td className="px-3 py-2.5 hidden lg:table-cell">
-                <div className="text-xs text-gray-500">{entry.divisionName}</div>
-              </td>
-              <td className={`px-3 py-2.5 text-center text-base font-bold ${COUNT_COLOURS[category]}`}>
-                {entry.count}
-              </td>
+    <>
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-100 bg-gray-50">
+              <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-400 w-8">#</th>
+              <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-400">Player</th>
+              <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-400 hidden sm:table-cell">Team</th>
+              <th className="text-left px-3 py-2.5 text-xs font-semibold text-gray-400 hidden lg:table-cell">Division</th>
+              <th className={`text-center px-3 py-2.5 text-xs font-semibold w-14 ${COUNT_COLOURS[category]}`}>
+                {label}
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {entries.map((entry, idx) => (
+              <tr
+                key={`${category}-${entry.playerName}-${entry.teamId}`}
+                onClick={() => setSelectedPlayer(entry)}
+                className={`border-b border-gray-50 last:border-0 cursor-pointer hover:bg-blue-50/40 transition-colors ${idx % 2 === 0 ? '' : 'bg-gray-50/40'}`}
+              >
+                <td className="px-3 py-2.5 text-xs text-gray-400 font-medium">{idx + 1}</td>
+                <td className="px-3 py-2.5">
+                  <div className="font-medium text-gray-800 leading-tight hover:text-blue-600 transition-colors">{entry.playerName}</div>
+                  <div className="text-xs text-gray-400 sm:hidden leading-tight mt-0.5">{entry.teamName}</div>
+                </td>
+                <td className="px-3 py-2.5 text-sm text-gray-600 hidden sm:table-cell">{entry.teamName}</td>
+                <td className="px-3 py-2.5 hidden lg:table-cell">
+                  <div className="text-xs text-gray-500">{entry.divisionName}</div>
+                </td>
+                <td className={`px-3 py-2.5 text-center text-base font-bold ${COUNT_COLOURS[category]}`}>
+                  {entry.count}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {selectedPlayer && (
+        <PlayerModal
+          entry={selectedPlayer}
+          category={category}
+          onClose={() => setSelectedPlayer(null)}
+        />
+      )}
+    </>
   );
 }

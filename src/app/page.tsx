@@ -151,9 +151,13 @@ export default function Home() {
   useEffect(() => { writeURL(tab, filters); }, [tab, filters]);
 
   useEffect(() => {
-    loadFixtures().then(setFixtureData).catch((e) => setFixtureError(e.message));
+    loadFixtures()
+      .then((data) => {
+        setFixtureData(data);
+        loadStats(data.allMatches).then(setStatsData).catch((e) => setStatsError(e.message));
+      })
+      .catch((e) => setFixtureError(e.message));
     loadLadder().then(setLadderData).catch((e) => setLadderError(e.message));
-    loadStats().then(setStatsData).catch((e) => setStatsError(e.message));
     loadAppointments().then(setAppointments);
   }, []);
 
@@ -162,18 +166,19 @@ export default function Home() {
     setFixtureError(null);
     setLadderError(null);
     setStatsError(null);
-    const [f, l, s, a] = await Promise.allSettled([
+    const [f, l, a] = await Promise.allSettled([
       loadFixtures(),
       loadLadder(),
-      loadStats(),
       loadAppointments(),
     ]);
-    if (f.status === 'fulfilled') setFixtureData(f.value);
-    else setFixtureError((f.reason as Error).message);
+    if (f.status === 'fulfilled') {
+      setFixtureData(f.value);
+      loadStats(f.value.allMatches).then(setStatsData).catch((e) => setStatsError(e.message));
+    } else {
+      setFixtureError((f.reason as Error).message);
+    }
     if (l.status === 'fulfilled') setLadderData(l.value);
     else setLadderError((l.reason as Error).message);
-    if (s.status === 'fulfilled') setStatsData(s.value);
-    else setStatsError((s.reason as Error).message);
     if (a.status === 'fulfilled') setAppointments(a.value);
     setReloading(false);
   }

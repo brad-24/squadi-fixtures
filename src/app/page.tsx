@@ -497,7 +497,7 @@ export default function Home() {
                 className={`flex-1 min-w-0 text-center px-1 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-t-lg transition-colors whitespace-nowrap
                   ${tab === id
                     ? 'bg-gray-50 text-brand-800'
-                    : 'text-zinc-400 hover:text-white hover:bg-brand-700'
+                    : 'text-white hover:bg-brand-700'
                   }`}
                 type="button"
               >

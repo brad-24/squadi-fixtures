@@ -8,12 +8,13 @@ import MultiSelect from '@/components/MultiSelect';
 import MatchCard from '@/components/MatchCard';
 import LadderView from '@/components/LadderView';
 import StatsView from '@/components/StatsView';
+import ClubRefsView from '@/components/ClubRefsView';
 import ContactModal from '@/components/ContactModal';
 import { loadFixtures, loadLadder, loadStats, loadAppointments } from '@/lib/squadi';
 
-type Tab = 'fixtures' | 'results' | 'ladder' | 'statistics';
+type Tab = 'fixtures' | 'results' | 'ladder' | 'statistics' | 'clubrefs';
 
-const TABS: Tab[] = ['fixtures', 'results', 'ladder', 'statistics'];
+const TABS: Tab[] = ['fixtures', 'results', 'ladder', 'statistics', 'clubrefs'];
 
 function readURL(): { tab: Tab; filters: ActiveFilters } {
   if (typeof window === 'undefined') return { tab: 'fixtures', filters: EMPTY_FILTERS };
@@ -429,9 +430,10 @@ export default function Home() {
     { id: 'results' as Tab, label: '✅ Results' },
     { id: 'ladder' as Tab, label: '🏆 Ladders' },
     { id: 'statistics' as Tab, label: '📊 Statistics' },
+    { id: 'clubrefs' as Tab, label: '🙋 Club Refs' },
   ];
 
-  const showExport = tab !== 'ladder' && fixtureData &&
+  const showExport = tab !== 'ladder' && tab !== 'clubrefs' && fixtureData &&
     (tab === 'fixtures' ? upcomingCount > 0 : completedCount > 0);
 
   return (
@@ -585,11 +587,11 @@ export default function Home() {
           {tab !== 'ladder' && tab !== 'statistics' && (
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-gray-400 font-medium">
-                {tab === 'fixtures' ? 'Upcoming:' : 'Past:'}
+                {tab === 'results' ? 'Past:' : 'Upcoming:'}
               </span>
               <div className="flex gap-1.5 flex-wrap">
                 {DATE_PRESETS.map(({ label, days }) => {
-                  const direction = tab === 'fixtures' ? 'future' : 'past';
+                  const direction = tab === 'results' ? 'past' : 'future';
                   const active = isPresetActive(filters, days, direction);
                   return (
                     <button
@@ -902,6 +904,29 @@ export default function Home() {
                 selectedAgeGroups={filters.ageGroups}
                 selectedClubs={filters.clubs}
                 selectedTeams={filters.teams}
+              />
+            )}
+          </>
+        )}
+
+        {/* ── CLUB REFS TAB ── */}
+        {tab === 'clubrefs' && (
+          <>
+            {fixtureError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-4 text-sm">
+                Error loading fixtures: {fixtureError}
+              </div>
+            )}
+            {!fixtureData && !fixtureError && (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <p className="text-gray-500 text-sm">Loading games…</p>
+              </div>
+            )}
+            {fixtureData && (
+              <ClubRefsView
+                matches={filteredMatches}
+                appointmentByMatchId={appointmentByMatchId}
               />
             )}
           </>

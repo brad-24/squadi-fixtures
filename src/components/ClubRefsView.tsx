@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { Match, Appointment } from '@/types';
 import { formatMatchDate, formatMatchTime, formatDateKey } from '@/lib/utils';
 
@@ -43,6 +43,43 @@ export default function ClubRefsView({ matches, appointmentByMatchId }: Props) {
     [groupsByDate],
   );
 
+  // Plain-text summary suitable for pasting into a group chat
+  const shareText = useMemo(() => {
+    const lines = ['⚽ Officials needed', ''];
+    for (const [, games] of groupsByDate) {
+      lines.push(formatMatchDate(games[0].match.startTime));
+      for (const { match, missing } of games) {
+        const venue = [match.venueCourt?.venue?.name, match.venueCourt?.name].filter(Boolean).join(' · ');
+        lines.push(
+          `• ${formatMatchTime(match.startTime)} ${match.team1.name} v ${match.team2.name}` +
+          ` (${match.divisionName}${venue ? `, ${venue}` : ''}) — need ${missing.join(', ')}`,
+        );
+      }
+      lines.push('');
+    }
+    return lines.join('\n').trimEnd();
+  }, [groupsByDate]);
+
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(shareText);
+    } catch {
+      // Fallback for browsers/contexts without the async clipboard API
+      const ta = document.createElement('textarea');
+      ta.value = shareText;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   if (totalGames === 0) {
     return (
       <div className="text-center py-16 text-gray-400">
@@ -57,10 +94,34 @@ export default function ClubRefsView({ matches, appointmentByMatchId }: Props) {
 
   return (
     <>
-      <p className="text-sm text-gray-500 mb-4">
-        <span className="font-semibold text-gray-800">{totalGames}</span>
-        {' upcoming '}{totalGames === 1 ? 'game needs' : 'games need'}{' officials assigned'}
-      </p>
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <p className="text-sm text-gray-500">
+          <span className="font-semibold text-gray-800">{totalGames}</span>
+          {' upcoming '}{totalGames === 1 ? 'game needs' : 'games need'}{' officials assigned'}
+        </p>
+        <button
+          onClick={handleCopy}
+          type="button"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-colors flex-shrink-0"
+        >
+          {copied ? (
+            <>
+              <svg className="w-3.5 h-3.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Copied!
+            </>
+          ) : (
+            <>
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              Copy list
+            </>
+          )}
+        </button>
+      </div>
       <div className="space-y-6">
         {[...groupsByDate.entries()].map(([dateKey, games]) => (
           <section key={dateKey}>

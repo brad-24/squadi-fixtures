@@ -430,7 +430,7 @@ export default function Home() {
     { id: 'results' as Tab, label: '✅ Results' },
     { id: 'ladder' as Tab, label: '🏆 Ladders' },
     { id: 'statistics' as Tab, label: '📊 Statistics' },
-    { id: 'clubrefs' as Tab, label: '🙋 Club Refs' },
+    { id: 'clubrefs' as Tab, label: '🚩 Club Refs' },
   ];
 
   const showExport = tab !== 'ladder' && tab !== 'clubrefs' && fixtureData &&

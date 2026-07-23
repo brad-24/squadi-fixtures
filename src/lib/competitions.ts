@@ -10,6 +10,9 @@ export const COMPETITIONS: [string, number][] = [
   ['75c83158-d8dd-4ffb-a64c-523788a053c6', 1685], // T3 Girls United League
 ];
 
+// MiniRoos & Under 12 — no individual events tracked and no officials appointed
+export const MINIROOS_COMPETITION_ID = 1387;
+
 export const SQUADI_BASE = 'https://api.squadi.com/livescores';
 export const SQUADI_ORIGIN = 'https://registration.squadi.com';
 

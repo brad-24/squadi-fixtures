@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import type { Match, Appointment } from '@/types';
 import { formatMatchDate, formatMatchTime, formatDateKey } from '@/lib/utils';
+import { MINIROOS_COMPETITION_ID } from '@/lib/competitions';
 
 interface Props {
   matches: Match[];
@@ -27,6 +28,8 @@ export default function ClubRefsView({ matches, appointmentByMatchId }: Props) {
     for (const m of matches) {
       // Only upcoming/live games still need officials assigned
       if (m.matchStatus?.toUpperCase() === 'ENDED') continue;
+      // MiniRoos & U12 don't have officials appointed
+      if (m.competitionId === MINIROOS_COMPETITION_ID) continue;
       // Byes have no officials to assign
       if (m.club1.toLowerCase() === 'bye' || m.club2.toLowerCase() === 'bye') continue;
       const missing = missingRoles(appointmentByMatchId.get(m.id));

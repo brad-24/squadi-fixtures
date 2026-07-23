@@ -426,11 +426,11 @@ export default function Home() {
   }
 
   const tabConfig = [
-    { id: 'fixtures' as Tab, label: '📅 Fixtures' },
-    { id: 'results' as Tab, label: '✅ Results' },
-    { id: 'ladder' as Tab, label: '🏆 Ladders' },
-    { id: 'statistics' as Tab, label: '📊 Statistics' },
-    { id: 'clubrefs' as Tab, label: '🚩 Club Refs' },
+    { id: 'fixtures' as Tab, label: '📅 Fixtures', short: 'Fixtures' },
+    { id: 'results' as Tab, label: '✅ Results', short: 'Results' },
+    { id: 'ladder' as Tab, label: '🏆 Ladders', short: 'Ladders' },
+    { id: 'statistics' as Tab, label: '📊 Statistics', short: 'Stats' },
+    { id: 'clubrefs' as Tab, label: '🚩 Club Refs', short: 'Refs' },
   ];
 
   const showExport = tab !== 'ladder' && tab !== 'clubrefs' && fixtureData &&
@@ -489,19 +489,20 @@ export default function Home() {
             </button>
             </div>
           </div>
-          <div className="flex gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            {tabConfig.map(({ id, label }) => (
+          <div className="flex gap-0.5 sm:gap-1">
+            {tabConfig.map(({ id, label, short }) => (
               <button
                 key={id}
                 onClick={() => switchTab(id)}
-                className={`px-3 sm:px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors whitespace-nowrap flex-shrink-0
+                className={`flex-1 min-w-0 text-center px-1 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-t-lg transition-colors whitespace-nowrap
                   ${tab === id
                     ? 'bg-gray-50 text-brand-800'
                     : 'text-zinc-400 hover:text-white hover:bg-brand-700'
                   }`}
                 type="button"
               >
-                {label}
+                <span className="sm:hidden">{short}</span>
+                <span className="hidden sm:inline">{label}</span>
               </button>
             ))}
           </div>

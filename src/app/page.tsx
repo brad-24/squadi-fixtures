@@ -489,12 +489,12 @@ export default function Home() {
             </button>
             </div>
           </div>
-          <div className="flex gap-1">
+          <div className="flex gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {tabConfig.map(({ id, label }) => (
               <button
                 key={id}
                 onClick={() => switchTab(id)}
-                className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors
+                className={`px-3 sm:px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors whitespace-nowrap flex-shrink-0
                   ${tab === id
                     ? 'bg-gray-50 text-brand-800'
                     : 'text-zinc-400 hover:text-white hover:bg-brand-700'

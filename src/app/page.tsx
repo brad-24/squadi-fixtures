@@ -426,11 +426,11 @@ export default function Home() {
   }
 
   const tabConfig = [
-    { id: 'fixtures' as Tab, label: '📅 Fixtures', short: 'Fixtures' },
-    { id: 'results' as Tab, label: '✅ Results', short: 'Results' },
-    { id: 'ladder' as Tab, label: '🏆 Ladders', short: 'Ladders' },
-    { id: 'statistics' as Tab, label: '📊 Statistics', short: 'Stats' },
-    { id: 'clubrefs' as Tab, label: '🚩 Club Refs', short: 'Refs' },
+    { id: 'fixtures' as Tab, icon: '📅', label: 'Fixtures', short: 'Fixtures' },
+    { id: 'results' as Tab, icon: '✅', label: 'Results', short: 'Results' },
+    { id: 'ladder' as Tab, icon: '🏆', label: 'Ladders', short: 'Ladders' },
+    { id: 'statistics' as Tab, icon: '📊', label: 'Statistics', short: 'Stats' },
+    { id: 'clubrefs' as Tab, icon: '🚩', label: 'Club Refs', short: 'Refs' },
   ];
 
   const showExport = tab !== 'ladder' && tab !== 'clubrefs' && fixtureData &&
@@ -490,7 +490,7 @@ export default function Home() {
             </div>
           </div>
           <div className="flex gap-0.5 sm:gap-1">
-            {tabConfig.map(({ id, label, short }) => (
+            {tabConfig.map(({ id, icon, label, short }) => (
               <button
                 key={id}
                 onClick={() => switchTab(id)}
@@ -501,8 +501,11 @@ export default function Home() {
                   }`}
                 type="button"
               >
-                <span className="sm:hidden">{short}</span>
-                <span className="hidden sm:inline">{label}</span>
+                <span className="sm:hidden flex flex-col items-center gap-0.5 leading-tight">
+                  <span className="text-base">{icon}</span>
+                  <span>{short}</span>
+                </span>
+                <span className="hidden sm:inline">{icon} {label}</span>
               </button>
             ))}
           </div>

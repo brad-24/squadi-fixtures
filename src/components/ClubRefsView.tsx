@@ -25,9 +25,12 @@ function missingRoles(appointment: Appointment | undefined): string[] {
 export default function ClubRefsView({ matches, appointmentByMatchId }: Props) {
   const groupsByDate = useMemo(() => {
     const groups = new Map<string, { match: Match; missing: string[] }[]>();
+    const now = Date.now();
     for (const m of matches) {
       // Only upcoming/live games still need officials assigned
       if (m.matchStatus?.toUpperCase() === 'ENDED') continue;
+      // Ignore past fixtures (kicked off before now, regardless of status)
+      if (new Date(m.startTime).getTime() < now) continue;
       // MiniRoos & U12 don't have officials appointed
       if (m.competitionId === MINIROOS_COMPETITION_ID) continue;
       // Byes have no officials to assign

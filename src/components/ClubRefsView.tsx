@@ -49,10 +49,9 @@ export default function ClubRefsView({ matches, appointmentByMatchId }: Props) {
     for (const [, games] of groupsByDate) {
       lines.push(formatMatchDate(games[0].match.startTime));
       for (const { match, missing } of games) {
-        const venue = [match.venueCourt?.venue?.name, match.venueCourt?.name].filter(Boolean).join(' · ');
         lines.push(
           `• ${formatMatchTime(match.startTime)} ${match.team1.name} v ${match.team2.name}` +
-          ` (${match.divisionName}${venue ? `, ${venue}` : ''}) — need ${missing.join(', ')}`,
+          ` — need ${missing.join(', ')}`,
         );
       }
       lines.push('');

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import type { FixtureData, LadderData, ActiveFilters, Match, StatsData, StatCategory, Appointment } from '@/types';
 import { formatMatchDate, formatDateKey, formatMatchTime, getStatusLabel } from '@/lib/utils';
@@ -134,6 +134,52 @@ function DateDivider({ startTime }: { startTime: string }) {
   );
 }
 
+// Rendering every match at once is too heavy — each results card also fires its own
+// matchEvents request, so a few thousand cards will lock up the browser.
+const PAGE_SIZE = 200;
+
+// Take the first `limit` matches across the date groups, preserving group order.
+function limitGroups(groups: Map<string, Match[]>, limit: number): Map<string, Match[]> {
+  const out = new Map<string, Match[]>();
+  let remaining = limit;
+  for (const [key, matches] of groups) {
+    if (remaining <= 0) break;
+    out.set(key, matches.length <= remaining ? matches : matches.slice(0, remaining));
+    remaining -= matches.length;
+  }
+  return out;
+}
+
+function LoadMore({ shown, total, onLoadMore }: { shown: number; total: number; onLoadMore: () => void }) {
+  const sentinel = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) onLoadMore(); },
+      { rootMargin: '600px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [onLoadMore]);
+
+  return (
+    <div ref={sentinel} className="flex flex-col items-center gap-2 pt-2">
+      <button
+        onClick={onLoadMore}
+        type="button"
+        className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+      >
+        Show more
+      </button>
+      <span className="text-xs text-gray-400">
+        Showing {shown} of {total}
+      </span>
+    </div>
+  );
+}
+
 export default function Home() {
   const [tab, setTab] = useState<Tab>(() => readURL().tab);
   const [fixtureData, setFixtureData] = useState<FixtureData | null>(null);
@@ -148,8 +194,14 @@ export default function Home() {
   const [statsCategory, setStatsCategory] = useState<StatCategory>('goals');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [showContact, setShowContact] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   useEffect(() => { writeURL(tab, filters); }, [tab, filters]);
+
+  // Start each tab / filter change back at the first page
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [tab, filters, showPastFixtures]);
+
+  const loadMore = useCallback(() => setVisibleCount((n) => n + PAGE_SIZE), []);
 
   useEffect(() => {
     loadFixtures()
@@ -286,6 +338,18 @@ export default function Home() {
     () => filteredMatches.filter((m) => !isInProgress(m) && !isUpcoming(m.startTime)).length,
     [filteredMatches],
   );
+
+  const visibleUpcomingByDate = useMemo(
+    () => limitGroups(upcomingByDate, visibleCount),
+    [upcomingByDate, visibleCount],
+  );
+  const visibleCompletedByDate = useMemo(
+    () => limitGroups(completedByDate, visibleCount),
+    [completedByDate, visibleCount],
+  );
+
+  const shownUpcomingCount = Math.min(visibleCount, upcomingCount);
+  const shownCompletedCount = Math.min(visibleCount, completedCount);
 
   const hasActiveFilters =
     filters.competitions.length > 0 ||
@@ -768,7 +832,7 @@ export default function Home() {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {[...upcomingByDate.entries()].map(([dateKey, matches]) => (
+                    {[...visibleUpcomingByDate.entries()].map(([dateKey, matches]) => (
                       <section key={dateKey}>
                         <DateDivider startTime={matches[0].startTime} />
                         <div className="space-y-2.5">
@@ -776,6 +840,9 @@ export default function Home() {
                         </div>
                       </section>
                     ))}
+                    {shownUpcomingCount < upcomingCount && (
+                      <LoadMore shown={shownUpcomingCount} total={upcomingCount} onLoadMore={loadMore} />
+                    )}
                   </div>
                 )}
               </>
@@ -846,7 +913,7 @@ export default function Home() {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {[...completedByDate.entries()].map(([dateKey, matches]) => (
+                    {[...visibleCompletedByDate.entries()].map(([dateKey, matches]) => (
                       <section key={dateKey}>
                         <DateDivider startTime={matches[0].startTime} />
                         <div className="space-y-2.5">
@@ -854,6 +921,9 @@ export default function Home() {
                         </div>
                       </section>
                     ))}
+                    {shownCompletedCount < completedCount && (
+                      <LoadMore shown={shownCompletedCount} total={completedCount} onLoadMore={loadMore} />
+                    )}
                   </div>
                 )}
               </>

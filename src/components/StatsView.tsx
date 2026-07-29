@@ -42,6 +42,9 @@ const COUNT_COLOURS: Record<StatCategory, string> = {
   cleanSheets: 'text-teal-700 bg-teal-50/60',
 };
 
+// Each division shows a leaderboard-sized slice until expanded
+const COLLAPSED_ROWS = 5;
+
 // Player and team stats render through the same table, so both are flattened
 // into this shape first.
 interface StatRow {
@@ -166,6 +169,8 @@ function DivisionTable({
   onSelect: (row: StatRow) => void;
 }) {
   const isTeamStat = category === 'cleanSheets';
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? rows : rows.slice(0, COLLAPSED_ROWS);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-4">
@@ -193,7 +198,7 @@ function DivisionTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, idx) => (
+          {visible.map((row, idx) => (
             <tr
               key={row.id}
               onClick={() => onSelect(row)}
@@ -220,6 +225,15 @@ function DivisionTable({
           ))}
         </tbody>
       </table>
+      {rows.length > COLLAPSED_ROWS && (
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          type="button"
+          className="w-full px-3 py-2 border-t border-gray-100 bg-gray-50/60 text-xs font-medium text-blue-600 hover:bg-gray-100 hover:text-blue-800 transition-colors"
+        >
+          {expanded ? 'Show less' : `Show all ${rows.length}`}
+        </button>
+      )}
     </div>
   );
 }

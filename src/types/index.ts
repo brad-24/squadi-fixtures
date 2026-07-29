@@ -123,6 +123,8 @@ export interface PlayerStatOccurrence {
   competitionName: string;
 }
 
+// One entry per player *per division* — teams that play across two divisions
+// (e.g. a JL division alongside their Division 1) must not pool their tallies.
 export interface PlayerStatEntry {
   playerName: string;
   shirt: string;
@@ -130,6 +132,7 @@ export interface PlayerStatEntry {
   teamName: string;
   competitionName: string;
   ageGroup: string;
+  divisionId: number;
   divisionName: string;
   count: number;
   occurrences: PlayerStatOccurrence[];
@@ -147,6 +150,7 @@ export interface TeamStatEntry {
   teamName: string;
   competitionName: string;
   ageGroup: string;
+  divisionId: number;
   divisionName: string;
   matches: TeamMatchRecord[];
 }

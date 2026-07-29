@@ -55,6 +55,7 @@ interface StatRow {
   secondary: string | null;
   teamName: string;
   competitionName: string;
+  divisionId: number;
   divisionName: string;
   count: number;
   /** Completed matches in range — clean sheets only */
@@ -267,11 +268,12 @@ export default function StatsView({
           const played = e.matches.filter((m) => inRange(m.date, dateFrom, dateTo));
           const clean = played.filter((m) => m.conceded === 0);
           return {
-            id: `cleanSheets-${e.teamId}`,
+            id: `cleanSheets-${e.teamId}-${e.divisionId}`,
             primary: e.teamName,
             secondary: null,
             teamName: e.teamName,
             competitionName: e.competitionName,
+            divisionId: e.divisionId,
             divisionName: e.divisionName,
             count: clean.length,
             played: played.length,
@@ -286,11 +288,12 @@ export default function StatsView({
       .map((e): StatRow => {
         const occurrences = e.occurrences.filter((o) => inRange(o.date, dateFrom, dateTo));
         return {
-          id: `${category}-${e.playerName}-${e.teamId}`,
+          id: `${category}-${e.playerName}-${e.teamId}-${e.divisionId}`,
           primary: e.playerName,
           secondary: e.teamName,
           teamName: e.teamName,
           competitionName: e.competitionName,
+          divisionId: e.divisionId,
           divisionName: e.divisionName,
           count: occurrences.length,
           played: null,
@@ -301,13 +304,17 @@ export default function StatsView({
   }, [data, category, selectedCompetitions, selectedAgeGroups, selectedClubs, selectedTeams, dateFrom, dateTo]);
 
   const divisions = useMemo(() => {
-    const groups = new Map<string, { divisionName: string; competitionName: string; rows: StatRow[] }>();
+    const groups = new Map<number, { divisionId: number; divisionName: string; competitionName: string; rows: StatRow[] }>();
     for (const row of rows) {
-      const key = `${row.competitionName}|${row.divisionName}`;
-      let group = groups.get(key);
+      let group = groups.get(row.divisionId);
       if (!group) {
-        group = { divisionName: row.divisionName, competitionName: row.competitionName, rows: [] };
-        groups.set(key, group);
+        group = {
+          divisionId: row.divisionId,
+          divisionName: row.divisionName,
+          competitionName: row.competitionName,
+          rows: [],
+        };
+        groups.set(row.divisionId, group);
       }
       group.rows.push(row);
     }
@@ -337,7 +344,7 @@ export default function StatsView({
     <>
       {divisions.map((group) => (
         <DivisionTable
-          key={`${group.competitionName}|${group.divisionName}`}
+          key={group.divisionId}
           divisionName={group.divisionName}
           competitionName={group.competitionName}
           rows={group.rows}

@@ -76,6 +76,7 @@ export async function GET(request: Request) {
           teamName: item.teamName ?? '',
           competitionName,
           ageGroup: extractAgeGroup(item.divisionName ?? ''),
+          divisionId: item.divisionId ?? 0,
           divisionName: item.divisionName ?? '',
           count,
           occurrences: [],

@@ -176,7 +176,9 @@ export async function loadStats(allMatches: Match[]): Promise<StatsData> {
         competitionName: match.competitionName,
       };
 
-      const key = `${playerName}|${e.teamId}`;
+      // Keyed by division as well as player: a team can play across two
+      // divisions, and each goal belongs to the division it was scored in.
+      const key = `${playerName}|${e.teamId}|${match.divisionId}`;
       const existing = accum[category].get(key);
       if (existing) {
         existing.count++;
@@ -189,6 +191,7 @@ export async function loadStats(allMatches: Match[]): Promise<StatsData> {
           teamName,
           competitionName: match.competitionName,
           ageGroup: match.ageGroup,
+          divisionId: match.divisionId,
           divisionName: match.divisionName,
           count: 1,
           occurrences: [occurrence],
@@ -213,7 +216,8 @@ function isBye(teamName: string | undefined): boolean {
 // One entry per team, holding every completed match it played. Unlike the other
 // categories this comes straight from the scoreline — no match events needed.
 function collectTeamMatches(endedMatches: Match[]): TeamStatEntry[] {
-  const byTeam = new Map<number, TeamStatEntry>();
+  // Keyed by division as well as team, for the same reason as the player stats
+  const byTeam = new Map<string, TeamStatEntry>();
 
   for (const match of endedMatches) {
     // A missing score means the result was never entered — not a 0 conceded
@@ -225,17 +229,19 @@ function collectTeamMatches(endedMatches: Match[]): TeamStatEntry[] {
       const opponent = isTeam1 ? match.team2 : match.team1;
       if (!team?.id) continue;
 
-      let entry = byTeam.get(team.id);
+      const key = `${team.id}|${match.divisionId}`;
+      let entry = byTeam.get(key);
       if (!entry) {
         entry = {
           teamId: team.id,
           teamName: team.name,
           competitionName: match.competitionName,
           ageGroup: match.ageGroup,
+          divisionId: match.divisionId,
           divisionName: match.divisionName,
           matches: [],
         };
-        byTeam.set(team.id, entry);
+        byTeam.set(key, entry);
       }
 
       entry.matches.push({

@@ -106,7 +106,10 @@ export interface LadderData {
 
 // ── Statistics ───────────────────────────────────────────────────────────────
 
-export type StatCategory = 'goals' | 'assists' | 'yellowCards' | 'redCards';
+export type StatCategory = 'goals' | 'assists' | 'yellowCards' | 'redCards' | 'cleanSheets';
+
+// Categories built from individual match events (one occurrence per event)
+export type PlayerStatCategory = Exclude<StatCategory, 'cleanSheets'>;
 
 export interface PlayerStatOccurrence {
   matchId: number;
@@ -132,11 +135,28 @@ export interface PlayerStatEntry {
   occurrences: PlayerStatOccurrence[];
 }
 
+// Clean sheets are a team stat, so every completed match is kept — the ones with
+// `conceded === 0` are the clean sheets. Holding all of them lets the view
+// recompute both the tally and the games-played denominator under a date filter.
+export interface TeamMatchRecord extends PlayerStatOccurrence {
+  conceded: number;
+}
+
+export interface TeamStatEntry {
+  teamId: number;
+  teamName: string;
+  competitionName: string;
+  ageGroup: string;
+  divisionName: string;
+  matches: TeamMatchRecord[];
+}
+
 export interface StatsData {
   goals: PlayerStatEntry[];
   assists: PlayerStatEntry[];
   yellowCards: PlayerStatEntry[];
   redCards: PlayerStatEntry[];
+  cleanSheets: TeamStatEntry[];
 }
 
 // ── Appointments ─────────────────────────────────────────────────────────────

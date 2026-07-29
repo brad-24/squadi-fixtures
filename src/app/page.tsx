@@ -55,6 +55,7 @@ const STAT_CATEGORIES: { key: StatCategory; label: string }[] = [
   { key: 'assists', label: 'Assists' },
   { key: 'yellowCards', label: 'Yellow Cards' },
   { key: 'redCards', label: 'Red Cards' },
+  { key: 'cleanSheets', label: 'Clean Sheets' },
 ];
 
 const EMPTY_FILTERS: ActiveFilters = {
@@ -500,6 +501,10 @@ export default function Home() {
   const showExport = tab !== 'ladder' && tab !== 'clubrefs' && fixtureData &&
     (tab === 'fixtures' ? upcomingCount > 0 : completedCount > 0);
 
+  // Results and statistics look backwards; fixtures and club refs look forwards
+  const dateDirection: 'future' | 'past' =
+    tab === 'results' || tab === 'statistics' ? 'past' : 'future';
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Disclaimer banner */}
@@ -629,8 +634,8 @@ export default function Home() {
             )}
           </div>
 
-          {/* Date range — fixtures and results only */}
-          {tab !== 'ladder' && tab !== 'statistics' && (
+          {/* Date range — every tab except the ladder */}
+          {tab !== 'ladder' && (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 items-end">
               <FilterCell label="From">
                 <input
@@ -651,20 +656,19 @@ export default function Home() {
             </div>
           )}
 
-          {/* Date presets — fixtures and results only */}
-          {tab !== 'ladder' && tab !== 'statistics' && (
+          {/* Date presets — every tab except the ladder */}
+          {tab !== 'ladder' && (
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-gray-400 font-medium">
-                {tab === 'results' ? 'Past:' : 'Upcoming:'}
+                {dateDirection === 'past' ? 'Past:' : 'Upcoming:'}
               </span>
               <div className="flex gap-1.5 flex-wrap">
                 {DATE_PRESETS.map(({ label, days }) => {
-                  const direction = tab === 'results' ? 'past' : 'future';
-                  const active = isPresetActive(filters, days, direction);
+                  const active = isPresetActive(filters, days, dateDirection);
                   return (
                     <button
                       key={days}
-                      onClick={() => applyPreset(days, direction)}
+                      onClick={() => applyPreset(days, dateDirection)}
                       type="button"
                       className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors
                         ${active
@@ -725,18 +729,6 @@ export default function Home() {
                   </button>
                 ))}
               </div>
-              {hasActiveFilters && (
-                <button
-                  onClick={clearFilters}
-                  type="button"
-                  className="ml-auto flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Clear filters
-                </button>
-              )}
             </div>
           )}
 
@@ -978,6 +970,8 @@ export default function Home() {
                 selectedAgeGroups={filters.ageGroups}
                 selectedClubs={filters.clubs}
                 selectedTeams={filters.teams}
+                dateFrom={filters.dateFrom}
+                dateTo={filters.dateTo}
               />
             )}
           </>

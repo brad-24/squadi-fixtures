@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import type { PlayerStatEntry, StatsData, StatCategory } from '@/types';
+import type { PlayerStatEntry, StatsData, PlayerStatCategory } from '@/types';
 import { extractAgeGroup } from '@/lib/utils';
 import { COMPETITIONS, SQUADI_BASE, SQUADI_HEADERS } from '@/lib/competitions';
 
@@ -8,7 +8,7 @@ const STATS_COMPETITIONS = COMPETITIONS.filter(
   ([key]) => key !== '1e6ec610-7f27-4d97-bc8e-7908ad58188c',
 );
 
-const STAT_TYPES: Record<StatCategory, string> = {
+const STAT_TYPES: Record<PlayerStatCategory, string> = {
   goals: 'G,PG',
   assists: 'A',
   yellowCards: 'Y1,Y2,Y3,Y4,Y5,Y6,Y7,Y8,YC,YD',
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     const yearRefId = compResults[0]?.yearRefId ?? 8;
 
     const fetches = STATS_COMPETITIONS.flatMap(([compKey, compId]) =>
-      (Object.entries(STAT_TYPES) as [StatCategory, string][]).map(([category, statType]) =>
+      (Object.entries(STAT_TYPES) as [PlayerStatCategory, string][]).map(([category, statType]) =>
         squadiGet(
           `/stats/public/scoringStatsByGrade?statType=${encodeURIComponent(statType)}&competitionUniqueKey=${compKey}&yearRefId=${yearRefId}&divisionId=All&offset=0&limit=-1`,
         )
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
 
     const allResults = await Promise.all(fetches);
 
-    const accum: Record<StatCategory, PlayerStatEntry[]> = {
+    const accum: Record<PlayerStatCategory, PlayerStatEntry[]> = {
       goals: [],
       assists: [],
       yellowCards: [],
@@ -88,6 +88,9 @@ export async function GET(request: Request) {
       assists: accum.assists.sort((a, b) => b.count - a.count),
       yellowCards: accum.yellowCards.sort((a, b) => b.count - a.count),
       redCards: accum.redCards.sort((a, b) => b.count - a.count),
+      // Squadi's aggregate scoring endpoint has no scorelines, so clean sheets
+      // can't be derived here — the app computes them client-side in loadStats().
+      cleanSheets: [],
     };
 
     return NextResponse.json(stats, {

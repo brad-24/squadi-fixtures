@@ -1,7 +1,7 @@
 import type {
   Division, Match, FixtureData,
   LadderDivision, LadderData, LadderEntry,
-  StatsData, StatCategory, PlayerStatEntry, MatchEvent,
+  StatsData, PlayerStatCategory, PlayerStatEntry, TeamStatEntry, MatchEvent,
   Appointment,
 } from '@/types';
 import { extractAgeGroup, extractClub } from '@/lib/utils';
@@ -127,12 +127,14 @@ export async function loadStats(allMatches: Match[]): Promise<StatsData> {
     (m) => m.matchStatus?.toUpperCase() === 'ENDED' && m.competitionId !== MINIROOS_ID,
   );
 
-  const accum: Record<StatCategory, Map<string, PlayerStatEntry>> = {
+  const accum: Record<PlayerStatCategory, Map<string, PlayerStatEntry>> = {
     goals: new Map(),
     assists: new Map(),
     yellowCards: new Map(),
     redCards: new Map(),
   };
+
+  const cleanSheets = collectTeamMatches(endedMatches);
 
   const eventResults = await Promise.all(
     endedMatches.map((match) =>
@@ -148,7 +150,7 @@ export async function loadStats(allMatches: Match[]): Promise<StatsData> {
 
   for (const { events, match } of eventResults) {
     for (const e of events) {
-      let category: StatCategory | null = null;
+      let category: PlayerStatCategory | null = null;
       if (e.type === 'G' || e.type === 'PG') category = 'goals';
       else if (e.type === 'A') category = 'assists';
       else if (e.type.startsWith('Y')) category = 'yellowCards';
@@ -200,7 +202,58 @@ export async function loadStats(allMatches: Match[]): Promise<StatsData> {
     assists: [...accum.assists.values()].sort((a, b) => b.count - a.count),
     yellowCards: [...accum.yellowCards.values()].sort((a, b) => b.count - a.count),
     redCards: [...accum.redCards.values()].sort((a, b) => b.count - a.count),
+    cleanSheets,
   };
+}
+
+function isBye(teamName: string | undefined): boolean {
+  return !teamName || /^bye$/i.test(teamName.trim());
+}
+
+// One entry per team, holding every completed match it played. Unlike the other
+// categories this comes straight from the scoreline — no match events needed.
+function collectTeamMatches(endedMatches: Match[]): TeamStatEntry[] {
+  const byTeam = new Map<number, TeamStatEntry>();
+
+  for (const match of endedMatches) {
+    // A missing score means the result was never entered — not a 0 conceded
+    if (match.team1Score === null || match.team2Score === null) continue;
+    if (isBye(match.team1?.name) || isBye(match.team2?.name)) continue;
+
+    for (const isTeam1 of [true, false]) {
+      const team = isTeam1 ? match.team1 : match.team2;
+      const opponent = isTeam1 ? match.team2 : match.team1;
+      if (!team?.id) continue;
+
+      let entry = byTeam.get(team.id);
+      if (!entry) {
+        entry = {
+          teamId: team.id,
+          teamName: team.name,
+          competitionName: match.competitionName,
+          ageGroup: match.ageGroup,
+          divisionName: match.divisionName,
+          matches: [],
+        };
+        byTeam.set(team.id, entry);
+      }
+
+      entry.matches.push({
+        matchId: match.id,
+        date: match.startTime,
+        opponent: opponent.name,
+        homeTeam: match.team1.name,
+        awayTeam: match.team2.name,
+        homeScore: match.team1Score,
+        awayScore: match.team2Score,
+        divisionName: match.divisionName,
+        competitionName: match.competitionName,
+        conceded: isTeam1 ? match.team2Score : match.team1Score,
+      });
+    }
+  }
+
+  return [...byTeam.values()];
 }
 
 export async function loadAppointments(): Promise<Appointment[]> {

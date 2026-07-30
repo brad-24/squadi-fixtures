@@ -273,9 +273,24 @@ interface RawAppointment {
 const APPOINTMENTS_PAGE_LIMIT = 2000;
 const APPOINTMENTS_MAX_PAGES = 10;
 
+// The field names below (competitionUniqueKeys/startDate/endDate/offset) are
+// what registration.squadi.com's own appointments page actually sends. An
+// earlier version of this request used stale field names (competitionIds,
+// dateFrom/dateTo, page) that the API silently ignored — it still returned
+// 200 with data, just a small undocumented default slice (~the first couple
+// of months of the season) instead of the full one, which made appointed
+// referees for later rounds look like "nobody assigned".
+function appointmentsWindow(): { startDate: string; endDate: string } {
+  const year = new Date().getFullYear();
+  return {
+    startDate: new Date(Date.UTC(year - 1, 0, 1)).toISOString(),
+    endDate: new Date(Date.UTC(year + 1, 11, 31, 23, 59, 59, 999)).toISOString(),
+  };
+}
+
 async function fetchAppointmentPage(
   organisationUniqueKey: string,
-  page: number,
+  offset: number,
 ): Promise<RawAppointment[] | null> {
   const res = await fetch(`${SQUADI_BASE}/public/appointments`, {
     method: 'POST',
@@ -283,9 +298,13 @@ async function fetchAppointmentPage(
     body: JSON.stringify({
       yearRefId: 8,
       organisationUniqueKey,
-      competitionIds: [], venueIds: [], fieldIds: [], ageGroupIds: [],
-      appointmentStatus: '', dateFrom: null, dateTo: null,
-      page, limit: APPOINTMENTS_PAGE_LIMIT,
+      appointmentStatus: 'All',
+      competitionUniqueKeys: COMPETITIONS.map(([key]) => key),
+      divisionIds: [], fieldIds: [], venueIds: [],
+      ...appointmentsWindow(),
+      offset, limit: APPOINTMENTS_PAGE_LIMIT,
+      locale: 'en-AU', search: '', sortBy: 'startTime', sortOrder: 'ASC',
+      timezone: 'Australia/Brisbane',
     }),
   });
   if (!res.ok) return null;
@@ -300,8 +319,8 @@ function isAppointed(umpires: RawAppointment['umpires'], sequence: number): bool
 async function loadOrgAppointments(organisationUniqueKey: string): Promise<Appointment[]> {
   const out: Appointment[] = [];
   try {
-    for (let page = 1; page <= APPOINTMENTS_MAX_PAGES; page++) {
-      const items = await fetchAppointmentPage(organisationUniqueKey, page);
+    for (let page = 0; page < APPOINTMENTS_MAX_PAGES; page++) {
+      const items = await fetchAppointmentPage(organisationUniqueKey, page * APPOINTMENTS_PAGE_LIMIT);
       if (!items) break;
       for (const item of items) {
         out.push({

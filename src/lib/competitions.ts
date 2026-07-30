@@ -17,9 +17,9 @@ export const MINIROOS_COMPETITION_ID = 1387;
 // competition's appointments only come back under the organisation that runs it.
 // Three of the competitions above are run by someone other than Darling Downs:
 //
-//   organisationId 112 — everything except the four below (Darling Downs)
+//   organisationId 112 — everything except the three below (Darling Downs)
 //   organisationId   8 — FQPL 5 Metro Men (1253)
-//   organisationId 569 — T2 and T3 Girls United League (1557, 1685)
+//   organisationId 569 — T2 and T3 Girls United League (1557, 1685), not currently displayed
 //   organisationId   7 — Queensland Cup (1330), not currently displayed
 //
 // A competition whose organisation is missing from this list returns no records
@@ -27,6 +27,7 @@ export const MINIROOS_COMPETITION_ID = 1387;
 export const APPOINTMENT_ORGANISATIONS: string[] = [
   '78a14e91-3dbc-4b51-a52d-f5642854e8ee', // organisationId 112 — FQ Darling Downs
   '74f39f3a-6e73-48a8-b837-705aba4c4512', // organisationId 7 — the org behind Queensland Cup
+  'b0e92958-980b-4da0-9ec9-a9c2597b06f0', // organisationId 8 — FQPL 5 Metro Men
 ];
 
 export const SQUADI_BASE = 'https://api.squadi.com/livescores';

@@ -13,6 +13,15 @@ export const COMPETITIONS: [string, number][] = [
 // MiniRoos & Under 12 — no individual events tracked and no officials appointed
 export const MINIROOS_COMPETITION_ID = 1387;
 
+// The appointments feed is scoped to one organisation per request, and a
+// competition's appointments only come back under the organisation that runs it.
+// Every competition above belongs to Darling Downs (organisationId 112) except
+// FQPL 5 Metro Men (1253), which Football Queensland runs (organisationId 8) —
+// so its officials stay invisible until that organisation's key is added here.
+export const APPOINTMENT_ORGANISATIONS: string[] = [
+  '78a14e91-3dbc-4b51-a52d-f5642854e8ee', // Football Queensland Darling Downs
+];
+
 export const SQUADI_BASE = 'https://api.squadi.com/livescores';
 export const SQUADI_ORIGIN = 'https://registration.squadi.com';
 

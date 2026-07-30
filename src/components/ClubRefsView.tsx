@@ -8,6 +8,10 @@ import { MINIROOS_COMPETITION_ID } from '@/lib/competitions';
 interface Props {
   matches: Match[];
   appointmentByMatchId: Map<number, Appointment>;
+  // Competitions the appointments feed actually returned data for. A competition
+  // missing from this set tells us nothing about its officials either way.
+  coveredCompetitionIds: Set<number>;
+  appointmentsLoaded: boolean;
 }
 
 const OFFICIAL_ROLES: { key: 'ref' | 'ar1' | 'ar2'; label: string }[] = [
@@ -16,25 +20,41 @@ const OFFICIAL_ROLES: { key: 'ref' | 'ar1' | 'ar2'; label: string }[] = [
   { key: 'ar2', label: 'AR2' },
 ];
 
-// The officials an appointment reports as NOT assigned. A match with no
-// appointment record at all is treated as having every role unassigned.
+// The officials an appointment reports as NOT assigned. Only ever called for
+// competitions the feed covers, so a missing record really does mean nobody
+// has been appointed to that match yet.
 function missingRoles(appointment: Appointment | undefined): string[] {
   return OFFICIAL_ROLES.filter(({ key }) => !appointment?.[key]).map((r) => r.label);
 }
 
-export default function ClubRefsView({ matches, appointmentByMatchId }: Props) {
+// Games that could still have officials appointed to them
+function needsOfficials(m: Match, now: number): boolean {
+  // Only upcoming/live games still need officials assigned
+  if (m.matchStatus?.toUpperCase() === 'ENDED') return false;
+  // Ignore past fixtures (kicked off before now, regardless of status)
+  if (new Date(m.startTime).getTime() < now) return false;
+  // MiniRoos & U12 don't have officials appointed
+  if (m.competitionId === MINIROOS_COMPETITION_ID) return false;
+  // Byes have no officials to assign
+  if (m.club1.toLowerCase() === 'bye' || m.club2.toLowerCase() === 'bye') return false;
+  return true;
+}
+
+export default function ClubRefsView({
+  matches,
+  appointmentByMatchId,
+  coveredCompetitionIds,
+  appointmentsLoaded,
+}: Props) {
   const groupsByDate = useMemo(() => {
     const groups = new Map<string, { match: Match; missing: string[] }[]>();
     const now = Date.now();
     for (const m of matches) {
-      // Only upcoming/live games still need officials assigned
-      if (m.matchStatus?.toUpperCase() === 'ENDED') continue;
-      // Ignore past fixtures (kicked off before now, regardless of status)
-      if (new Date(m.startTime).getTime() < now) continue;
-      // MiniRoos & U12 don't have officials appointed
-      if (m.competitionId === MINIROOS_COMPETITION_ID) continue;
-      // Byes have no officials to assign
-      if (m.club1.toLowerCase() === 'bye' || m.club2.toLowerCase() === 'bye') continue;
+      if (!needsOfficials(m, now)) continue;
+      // No appointment data for this competition at all — reporting every role as
+      // unassigned here would be a guess, and a wrong one when another
+      // organisation has already appointed the officials.
+      if (!coveredCompetitionIds.has(m.competitionId)) continue;
       const missing = missingRoles(appointmentByMatchId.get(m.id));
       if (missing.length === 0) continue;
       const key = formatDateKey(m.startTime);
@@ -42,7 +62,19 @@ export default function ClubRefsView({ matches, appointmentByMatchId }: Props) {
       groups.get(key)!.push({ match: m, missing });
     }
     return new Map([...groups.entries()].sort((a, b) => a[0].localeCompare(b[0])));
-  }, [matches, appointmentByMatchId]);
+  }, [matches, appointmentByMatchId, coveredCompetitionIds]);
+
+  // Competitions with upcoming games that the appointments feed never returned —
+  // called out so an empty list isn't mistaken for full coverage
+  const uncoveredCompetitions = useMemo(() => {
+    const names = new Set<string>();
+    const now = Date.now();
+    for (const m of matches) {
+      if (!needsOfficials(m, now)) continue;
+      if (!coveredCompetitionIds.has(m.competitionId)) names.add(m.competitionName);
+    }
+    return [...names].sort();
+  }, [matches, coveredCompetitionIds]);
 
   const totalGames = useMemo(
     () => [...groupsByDate.values()].reduce((sum, g) => sum + g.length, 0),
@@ -85,20 +117,40 @@ export default function ClubRefsView({ matches, appointmentByMatchId }: Props) {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  if (!appointmentsLoaded) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3">
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-gray-500 text-sm">Loading officials…</p>
+      </div>
+    );
+  }
+
+  const coverageNote = uncoveredCompetitions.length > 0 && (
+    <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-3 mb-4 text-xs">
+      No appointments data is published for {uncoveredCompetitions.join(', ')}, so those
+      games are left out of this list. Officials may well be appointed — check Squadi directly.
+    </div>
+  );
+
   if (totalGames === 0) {
     return (
-      <div className="text-center py-16 text-gray-400">
-        <svg className="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <p className="text-sm">All upcoming games have their officials assigned</p>
-      </div>
+      <>
+        {coverageNote}
+        <div className="text-center py-16 text-gray-400">
+          <svg className="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p className="text-sm">All upcoming games have their officials assigned</p>
+        </div>
+      </>
     );
   }
 
   return (
     <>
+      {coverageNote}
       <div className="flex items-center justify-between gap-2 mb-4">
         <p className="text-sm text-gray-500">
           <span className="font-semibold text-gray-800">{totalGames}</span>

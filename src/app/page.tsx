@@ -193,7 +193,9 @@ export default function Home() {
   const [statsData, setStatsData] = useState<StatsData | null>(null);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [statsCategory, setStatsCategory] = useState<StatCategory>('goals');
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  // null until the appointments feed answers — an empty list and "not loaded yet"
+  // mean very different things to the Club Refs tab
+  const [appointments, setAppointments] = useState<Appointment[] | null>(null);
   const [showContact, setShowContact] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
@@ -363,9 +365,20 @@ export default function Home() {
 
   const appointmentByMatchId = useMemo(() => {
     const map = new Map<number, Appointment>();
-    for (const a of appointments) map.set(a.matchId, a);
+    for (const a of appointments ?? []) map.set(a.matchId, a);
     return map;
   }, [appointments]);
+
+  // The feed is fetched per organisation, so a competition run by a body we have
+  // no key for returns nothing at all. That is "we don't know", not "nobody was
+  // appointed" — so Club Refs needs to know which competitions are covered.
+  const coveredCompetitionIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const m of fixtureData?.allMatches ?? []) {
+      if (appointmentByMatchId.has(m.id)) ids.add(m.competitionId);
+    }
+    return ids;
+  }, [fixtureData, appointmentByMatchId]);
 
   function clearFilters() { setFilters(EMPTY_FILTERS); }
 
@@ -995,6 +1008,8 @@ export default function Home() {
               <ClubRefsView
                 matches={filteredMatches}
                 appointmentByMatchId={appointmentByMatchId}
+                coveredCompetitionIds={coveredCompetitionIds}
+                appointmentsLoaded={appointments !== null}
               />
             )}
           </>

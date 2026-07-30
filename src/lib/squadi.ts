@@ -5,7 +5,7 @@ import type {
   Appointment,
 } from '@/types';
 import { extractAgeGroup, extractClub } from '@/lib/utils';
-import { COMPETITIONS, SQUADI_BASE } from '@/lib/competitions';
+import { APPOINTMENT_ORGANISATIONS, COMPETITIONS, SQUADI_BASE } from '@/lib/competitions';
 
 // Browser fetch — Origin header is set automatically by the browser (cross-origin).
 // Squadi reflects any Origin back as Access-Control-Allow-Origin, so CORS works.
@@ -262,31 +262,72 @@ function collectTeamMatches(endedMatches: Match[]): TeamStatEntry[] {
   return [...byTeam.values()];
 }
 
-export async function loadAppointments(): Promise<Appointment[]> {
+interface RawAppointment {
+  matchId: number;
+  umpires: { sequence: number; status: string }[] | null;
+}
+
+// A full season of appointments does not fit in one response, and the feed gives
+// no total — so keep asking for pages until one comes back short. The cap is a
+// runaway guard, not an expected limit.
+const APPOINTMENTS_PAGE_LIMIT = 2000;
+const APPOINTMENTS_MAX_PAGES = 10;
+
+async function fetchAppointmentPage(
+  organisationUniqueKey: string,
+  page: number,
+): Promise<RawAppointment[] | null> {
+  const res = await fetch(`${SQUADI_BASE}/public/appointments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      yearRefId: 8,
+      organisationUniqueKey,
+      competitionIds: [], venueIds: [], fieldIds: [], ageGroupIds: [],
+      appointmentStatus: '', dateFrom: null, dateTo: null,
+      page, limit: APPOINTMENTS_PAGE_LIMIT,
+    }),
+  });
+  if (!res.ok) return null;
+  const json = await res.json();
+  return Array.isArray(json.data) ? (json.data as RawAppointment[]) : [];
+}
+
+function isAppointed(umpires: RawAppointment['umpires'], sequence: number): boolean {
+  return (umpires ?? []).find((u) => u.sequence === sequence)?.status === 'appointed';
+}
+
+async function loadOrgAppointments(organisationUniqueKey: string): Promise<Appointment[]> {
+  const out: Appointment[] = [];
   try {
-    const res = await fetch(`${SQUADI_BASE}/public/appointments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        yearRefId: 8,
-        organisationUniqueKey: '78a14e91-3dbc-4b51-a52d-f5642854e8ee',
-        competitionIds: [], venueIds: [], fieldIds: [], ageGroupIds: [],
-        appointmentStatus: '', dateFrom: null, dateTo: null,
-        page: 1, limit: 2000,
-      }),
-    });
-    if (!res.ok) return [];
-    const json = await res.json();
-    const items: { matchId: number; umpires: { sequence: number; status: string }[] }[] =
-      Array.isArray(json.data) ? json.data : [];
-    return items.map((item) => ({
-      matchId: item.matchId,
-      ref: item.umpires.find((u) => u.sequence === 1)?.status === 'appointed',
-      ar1: item.umpires.find((u) => u.sequence === 2)?.status === 'appointed',
-      ar2: item.umpires.find((u) => u.sequence === 3)?.status === 'appointed',
-    }));
+    for (let page = 1; page <= APPOINTMENTS_MAX_PAGES; page++) {
+      const items = await fetchAppointmentPage(organisationUniqueKey, page);
+      if (!items) break;
+      for (const item of items) {
+        out.push({
+          matchId: item.matchId,
+          ref: isAppointed(item.umpires, 1),
+          ar1: isAppointed(item.umpires, 2),
+          ar2: isAppointed(item.umpires, 3),
+        });
+      }
+      if (items.length < APPOINTMENTS_PAGE_LIMIT) break;
+    }
   } catch {
-    return [];
+    // Keep whatever pages already came back rather than dropping the lot
   }
+  return out;
+}
+
+// One request per organisation: the feed only returns appointments for the
+// organisation it was asked about, so a competition run by another body needs
+// its own key in APPOINTMENT_ORGANISATIONS to show up at all.
+export async function loadAppointments(): Promise<Appointment[]> {
+  const perOrg = await Promise.all(APPOINTMENT_ORGANISATIONS.map(loadOrgAppointments));
+  const byMatchId = new Map<number, Appointment>();
+  for (const list of perOrg) {
+    for (const a of list) byMatchId.set(a.matchId, a);
+  }
+  return [...byMatchId.values()];
 }
 

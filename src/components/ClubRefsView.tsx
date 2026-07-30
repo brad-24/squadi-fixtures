@@ -129,7 +129,7 @@ export default function ClubRefsView({
   const coverageNote = uncoveredCompetitions.length > 0 && (
     <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-3 mb-4 text-xs">
       No appointments data is published for {uncoveredCompetitions.join(', ')}, so those
-      games are left out of this list. Officials may well be appointed — check Squadi directly.
+      games have not been listed here.
     </div>
   );
 

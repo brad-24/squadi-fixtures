@@ -382,10 +382,14 @@ export default function Home() {
 
   // A covered competition with no record for this match means nobody has been
   // appointed yet, not "unknown" — same reasoning ClubRefsView uses for missingRoles.
+  // But that only holds for games still to be played: some organisations (e.g.
+  // Metro Region for FQPL 5) only log appointments for a subset of their fixtures,
+  // so a missing record on an ENDED match means "not logged", not "no officials".
   function getAppointment(m: Match): Appointment | undefined {
     const found = appointmentByMatchId.get(m.id);
     if (found) return found;
     if (!coveredCompetitionIds.has(m.competitionId)) return undefined;
+    if (m.matchStatus?.toUpperCase() === 'ENDED') return undefined;
     return { matchId: m.id, ref: false, ar1: false, ar2: false };
   }
 

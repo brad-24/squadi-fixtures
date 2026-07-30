@@ -380,6 +380,15 @@ export default function Home() {
     return ids;
   }, [fixtureData, appointmentByMatchId]);
 
+  // A covered competition with no record for this match means nobody has been
+  // appointed yet, not "unknown" — same reasoning ClubRefsView uses for missingRoles.
+  function getAppointment(m: Match): Appointment | undefined {
+    const found = appointmentByMatchId.get(m.id);
+    if (found) return found;
+    if (!coveredCompetitionIds.has(m.competitionId)) return undefined;
+    return { matchId: m.id, ref: false, ar1: false, ar2: false };
+  }
+
   function clearFilters() { setFilters(EMPTY_FILTERS); }
 
   function switchTab(newTab: Tab) {
@@ -841,7 +850,7 @@ export default function Home() {
                       <section key={dateKey}>
                         <DateDivider startTime={matches[0].startTime} />
                         <div className="space-y-2.5">
-                          {matches.map((m) => <MatchCard key={m.id} match={m} appointment={appointmentByMatchId.get(m.id)} />)}
+                          {matches.map((m) => <MatchCard key={m.id} match={m} appointment={getAppointment(m)} />)}
                         </div>
                       </section>
                     ))}
@@ -922,7 +931,7 @@ export default function Home() {
                       <section key={dateKey}>
                         <DateDivider startTime={matches[0].startTime} />
                         <div className="space-y-2.5">
-                          {matches.map((m) => <MatchCard key={m.id} match={m} showEvents appointment={appointmentByMatchId.get(m.id)} />)}
+                          {matches.map((m) => <MatchCard key={m.id} match={m} showEvents appointment={getAppointment(m)} />)}
                         </div>
                       </section>
                     ))}
